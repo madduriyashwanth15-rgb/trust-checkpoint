@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en-IN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trust Checkpoint · 2040 concept</title>
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="top">
+  <div class="top-title">
+    <h1>Trust Checkpoint</h1>
+    <p>A 2040 concept for Flipkart's agent products. Follow Priya's day: tap the button with the pulsing ring.</p>
+  </div>
+  <button class="restart" id="restart" type="button">Restart story</button>
+</header>
+
+<main class="stage">
+  <nav class="story" aria-label="Priya's day">
+    <h2>Priya's day</h2>
+    <ol id="story"></ol>
+    <p class="story-note">Every number on the card is computed from seeded mock data. Nothing is typed in by hand.</p>
+  </nav>
+
+  <section class="device" aria-label="Phone">
+    <div class="switcher" role="tablist" aria-label="Choose an app">
+      <button role="tab" id="tab-money" aria-selected="true" type="button">Money app 2040</button>
+      <button role="tab" id="tab-shop" aria-selected="false" type="button">Shopping app 2040</button>
+    </div>
+    <p class="caption" id="caption">Our vision: Super.money in 2040</p>
+    <div class="phone-wrap" id="phoneWrap">
+      <div class="phone" id="phone">
+        <div class="statusbar" aria-hidden="true"><span>9:41</span><span class="sb-right">5G · 92%</span></div>
+        <div class="screen" id="screen"></div>
+        <div class="scrim" id="scrim" hidden></div>
+        <div class="sheet-host" id="sheetHost"></div>
+        <div class="toast" id="toast" role="status" aria-live="polite"></div>
+      </div>
+    </div>
+  </section>
+
+  <aside class="xray" id="panel" aria-label="What Priya can't see"></aside>
+</main>
+
+<footer class="disclaimer">Concept prototype for Flipkart APM '29. Not affiliated with or endorsed by Flipkart or Super.money. All brands, people and numbers are invented mock data.</footer>
+
+<script src="data.js"></script>
+<script src="logic.js"></script>
+<script src="lock.js"></script>
+<script src="ui.js"></script>
+<script src="panel.js"></script>
+</body>
+</html>
