@@ -4,7 +4,7 @@
 
 A concept for the Flipkart APM '29 case. Prompt: in 2040 everyone has a personal AI agent that runs their day-to-day tasks. Outline the ramifications, and create a product that helps people protect themselves from it.
 
-Live: <add your Vercel link here>
+Live: https://trust-checkpoint.vercel.app
 
 ## The idea
 Agents will make most everyday choices for us. Their worst habits are invisible: a sponsor wins a tie at the same price and rating, or a small overpay repeats. Spending limits control how much an agent spends, not how well it chooses.
