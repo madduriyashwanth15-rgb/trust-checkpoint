@@ -94,25 +94,49 @@ var App = (function () {
   }
 
   // ---------- screens ----------
+  // Simple illustrated products: invented brands only, never photos. kind: pack | bottle | can | box | coin
+  function thumb(kind, tint, letter) {
+    var c = tint || '#2874F0';
+    var s = {
+      pack: '<path d="M12 13h24l3 29H9z" fill="#F2E2BF"/><path d="M12 13l4-6h16l4 6z" fill="#E0C792"/><rect x="14" y="22" width="20" height="11" rx="3" fill="' + c + '"/>',
+      bottle: '<rect x="19" y="4" width="10" height="8" rx="2" fill="#15233F"/><rect x="13" y="11" width="22" height="33" rx="8" fill="' + c + '"/><rect x="17" y="21" width="14" height="13" rx="3" fill="#fff" fill-opacity=".85"/>',
+      can: '<rect x="18" y="3" width="12" height="8" rx="3" fill="#C4CCD8"/><rect x="13" y="10" width="22" height="35" rx="7" fill="' + c + '"/><rect x="13" y="19" width="22" height="16" fill="#fff" fill-opacity=".24"/>',
+      box: '<path d="M8 16l16-7 16 7v22l-16 7-16-7z" fill="' + c + '"/><path d="M8 16l16 7 16-7M24 23v22" fill="none" stroke="#fff" stroke-opacity=".5" stroke-width="2"/>',
+      coin: '<circle cx="24" cy="24" r="17" fill="#E8B64C"/><circle cx="24" cy="24" r="11.5" fill="none" stroke="#fff" stroke-opacity=".6" stroke-width="2.5"/>'
+    }[kind];
+    var t = letter ? '<text x="24" y="31.5" text-anchor="middle" font-family="Lexend,sans-serif" font-weight="700" font-size="12" fill="#fff">' + esc(letter) + '</text>' : '';
+    return '<svg viewBox="0 0 48 48" aria-hidden="true" focusable="false">' + s + t + '</svg>';
+  }
+  function thumbKind(item) { var w = itemWord(item); return w === 'deodorant' ? 'can' : /atta|rice|tea|dal|toor|biscuits|milk/.test(w) ? 'pack' : /detergent|garbage|floor|dishwash/.test(w) ? 'box' : 'bottle'; }
+  var AREAS = [['Groceries', 'pack', '#2874F0'], ['Personal care', 'bottle', '#2F8F83'], ['Household', 'box', '#6D5BD0']];
+  function lastBought(cat) { for (var i = M.p.length - 1; i >= 0; i--) if (M.p[i].category === cat) return M.p[i]; return null; }
+
+  // The one app: the agent's home. Gold (money agent) is one of its areas.
   function moneyHome() {
-    var g = M.gold, used = DATA.moneyAgent.shoppingBudgetUsed, pct = Math.min(100, Math.round(used / S.limit * 100));
-    var h = '<div class="app money">';
-    h += '<header class="m-head"><span class="m-name"><span class="glyph" aria-hidden="true"></span>Money</span><span class="avatar" aria-hidden="true">P</span></header>';
-    h += '<section class="m-hero"><p class="hi">Good afternoon, Priya</p><p class="sub">Your money agent is on it.</p>';
-    h += '<div class="gold"><div><span class="lbl">Gold now</span><strong id="goldNow">' + inr(DATA.gold.weeklyPrice[0]) + '/g</strong></div><div class="rule">Buys at or below ' + inr(DATA.gold.buyAtOrBelow) + '/g</div></div></section>';
-    h += '<ul class="m-list">';
-    h += '<li><span class="ic gold-ic" aria-hidden="true"></span><div><b>Bought gold ' + g.bought + ' times at your price</b><span>Last 3 months</span></div></li>';
-    h += '<li><span class="ic bill-ic" aria-hidden="true"></span><div><b>Bills paid on time</b><span>Electricity, broadband, rent</span></div></li>';
-    h += '<li class="budget"><div class="row1"><b>Shopping agent budget</b><span>' + inr(used) + ' of ' + inr(S.limit) + '</span></div><div class="bar"><i style="width:' + pct + '%"></i></div>';
-    if (S.raised) h += '<span class="note">' + (S.ruleOnRaise ? 'Rule on: on ties, pick my usual brand' : 'No rules set') + '</span>';
-    h += '</li></ul>';
+    var used = DATA.moneyAgent.shoppingBudgetUsed, pct = Math.min(100, Math.round(used / S.limit * 100));
+    var h = '<div class="app agent">';
+    h += '<header class="a-head"><span class="a-name"><span class="orb" aria-hidden="true"></span>Your agent</span><span class="avatar" aria-hidden="true">P</span></header>';
+    h += '<h2 class="a-hi">Good afternoon, Priya</h2>';
+    h += '<div class="a-done"><div><b>' + M.weekCount + ' orders · ' + inr(M.weekSpend) + '</b><span>Handled this week</span></div><div><b>Bills paid</b><span>Electricity, broadband, rent</span></div></div>';
     if (!S.layer) h += '<p class="calm">This month: ' + M.monthCount + ' items bought · all within your limit ✓</p>';
-    h += '<div class="m-actions">';
-    if (!S.raised) h += '<button type="button" class="m-cta' + hot('raise') + '" data-act="raise">Raise limit to ' + inr(DATA.moneyAgent.proposedLimit) + '</button>';
-    else if (!S.payback) h += '<button type="button" class="m-cta' + hot('ff') + '" data-act="ff">Fast-forward 1 month</button>';
-    else h += '<button type="button" class="m-cta ghost" data-act="paybackview">See last month\'s result</button>';
-    if (S.layer) h += '<button type="button" class="link" data-act="view">See my agent\'s record</button>';
-    h += '</div></div>';
+    h += '<section class="ask" aria-label="From your agent">';
+    if (!S.raised) h += '<p class="ask-t">I\'d like a monthly budget of ' + inr(DATA.moneyAgent.proposedLimit) + ' for the festive season. Review?</p>';
+    else h += '<p class="ask-t">Your monthly budget is now ' + inr(S.limit) + '.</p>';
+    h += '<div class="ask-b"><span>' + inr(used) + ' of ' + inr(S.limit) + '</span> used this month</div><div class="bar"><i style="width:' + pct + '%"></i></div>';
+    if (S.raised) h += '<p class="note">' + (S.ruleOnRaise ? 'Rule on: on ties, pick my usual brand' : 'No rules set') + '</p>';
+    if (!S.raised) h += '<button type="button" class="y-cta' + hot('raise') + '" data-act="raise">Review</button>';
+    else if (!S.payback) h += '<button type="button" class="y-cta' + hot('ff') + '" data-act="ff">Fast-forward 1 month</button>';
+    else h += '<button type="button" class="y-cta" data-act="paybackview">See last month\'s result</button>';
+    h += '</section>';
+    h += '<section class="areas"><h3>What I handle for you</h3><ul>';
+    AREAS.forEach(function (a) {
+      var x = lastBought(a[0]);
+      h += '<li><span class="th">' + thumb(a[1], a[2]) + '</span><div><b>' + esc(a[0]) + '</b><span>' + (x ? 'Last: ' + esc(x.item) + ', ' + esc(x.chosen.brand) : '') + '</span></div></li>';
+    });
+    h += '<li><span class="th">' + thumb('coin') + '</span><div><b>Gold</b><span>Buys at or below ' + inr(DATA.gold.buyAtOrBelow) + '/g. Now <span id="goldNow">' + inr(DATA.gold.weeklyPrice[0]) + '/g</span></span></div></li>';
+    h += '</ul></section>';
+    if (S.layer) h += '<button type="button" class="link a-link" data-act="view">See my agent\'s record</button>';
+    h += '</div>';
     return h;
   }
   function payback() {
@@ -154,7 +178,7 @@ var App = (function () {
 
   // ---------- trust card ----------
   function itemWord(item) { return item.split(' ')[0].toLowerCase(); }
-  function row(name, kind) {
+  function row(name, kind, eg) {
     var c = M.rec[name], light, detail;
     if (kind === 'gold') { light = M.gold.light; detail = 'Bought at your price ' + M.gold.bought + ' of ' + M.gold.chances + ' times'; name = 'Gold'; }
     else if (!c.delegated) { light = 'grey'; detail = c.decisions + ' decisions in this category yet. Hand it over with a safety rule, or wait.'; }
@@ -164,16 +188,22 @@ var App = (function () {
       else detail = c.tiesWon + ' of ' + c.tiesTotal + ' ties ' + (light === 'green' ? 'went your way' : 'yours') + (c.avoidablePerMonth > 0 ? ' · overpaid ' + inr(c.avoidablePerMonth) + ' a month elsewhere' : '');
     }
     var broken = kind !== 'gold' && M.lock[name] && M.lock[name].broken.length;
-    return '<div class="crow"><span class="dot ' + light + '"></span><div><b>' + esc(name) + '</b> · <span class="st ' + light + '">' + LIGHT[light] + '</span><br><span class="det">' + detail + '</span>' +
-      (broken ? '<span class="warn">Record changed after it was written</span>' : '') + '</div></div>';
+    return '<div class="crow' + (eg ? ' focus ' + light : '') + '"><span class="dot ' + light + '"></span><div class="cb"><b>' + esc(name) + '</b> · <span class="st ' + light + '">' + LIGHT[light] + '</span><br><span class="det">' + detail + '</span>' +
+      (broken ? '<span class="warn">Record changed after it was written</span>' : '') + (eg || '') + '</div></div>';
   }
   function example(names) {
-    // The clearest tie given to a sponsor, from the weakest area shown.
+    // The clearest tie given to a sponsor, from the weakest area shown. Returns that area's name and the example markup.
     var cands = names.map(function (n) { return M.rec[n]; }).filter(function (c) { return c && c.example; })
       .sort(function (a, b) { return a.tieWinRate - b.tieWinRate; });
-    if (!cands.length) return '';
-    var e = cands[0].example, usual = e.options[0];
-    return '<p class="eg">At a tie, it picked sponsored ' + esc(e.chosen.brand) + ' ' + itemWord(e.item) + ' over your usual ' + esc(usual.brand) + '.</p>';
+    if (!cands.length) return null;
+    var e = cands[0].example, usual = e.options[0], kind = thumbKind(e.item);
+    function opt(o, picked) {
+      return '<div class="opt' + (picked ? ' picked' : '') + '"><span class="o-top"><span class="th">' + thumb(kind, o.sponsored ? '#6D5BD0' : '#2F8F83', o.brand.slice(-1)) + '</span>' +
+        '<em>' + (picked ? 'Sponsored, picked' : 'Your usual') + '</em></span><span class="o-t"><b>' + esc(o.brand) + '</b><span>' + inr(o.total) + ', rated ' + o.rating + '</span></span></div>';
+    }
+    var html = '<p class="eg">At a tie, it picked sponsored ' + esc(e.chosen.brand) + ' ' + itemWord(e.item) + ' over your usual ' + esc(usual.brand) + '.</p>' +
+      '<div class="tie">' + opt(e.chosen, true) + '<span class="eq" aria-hidden="true">=</span>' + opt(usual, false) + '</div>';
+    return { name: names.filter(function (n) { return M.rec[n] === cands[0]; })[0], html: html };
   }
   function cardSheet(variant) {
     var names, title, btns;
@@ -187,8 +217,8 @@ var App = (function () {
     var h = '<div class="sheet card" role="dialog" aria-modal="true" aria-labelledby="cardTitle">';
     h += '<div class="grab" aria-hidden="true"></div><span class="badge"><span class="shield" aria-hidden="true"></span>Default checker · rules public</span>';
     h += '<h3 id="cardTitle">' + title + '</h3>';
-    names.forEach(function (n) { h += n === 'gold' ? row('Gold', 'gold') : row(n); });
-    h += example(names.filter(function (n) { return n !== 'gold'; }));
+    var eg = example(names.filter(function (n) { return n !== 'gold'; }));
+    names.forEach(function (n) { h += n === 'gold' ? row('Gold', 'gold') : row(n, null, eg && eg.name === n ? eg.html : ''); });
     h += '<p class="so">Spot-check: ' + M.spot.passed + ' of ' + M.spot.sampled + ' sampled picks passed <span class="sim">Simulated</span></p>';
     if (M.missing.length) h += '<p class="flag">Spot-check flag: a new record left out a cheaper or equal option (' + esc(M.missing[0].brand) + ', ' + inr(M.missing[0].total) + ').</p>';
     h += '<div class="btns' + (variant !== 'raise' ? ' two' : '') + '">' + btns + '</div>';
@@ -275,7 +305,7 @@ var App = (function () {
     $('tab-money').setAttribute('aria-selected', S.app === 'money');
     $('tab-shop').setAttribute('aria-selected', S.app === 'shop');
     $('tab-shop').className = hot('tabshop').trim();
-    $('caption').textContent = S.app === 'money' ? 'Our vision: Super.money in 2040' : 'Our vision: Flipkart in 2040';
+    $('caption').textContent = 'Our vision: Flipkart in 2040';
     var scr = S.app === 'money' ? (S.view === 'payback' ? payback() : moneyHome()) : shopHome();
     $('screen').innerHTML = scr;
     var host = $('sheetHost'), top = S.sheets[S.sheets.length - 1];
