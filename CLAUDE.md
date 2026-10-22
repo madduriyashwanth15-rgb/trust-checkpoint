@@ -1,7 +1,6 @@
 # Trust Checkpoint prototype (Flipkart APM '29). Read this first.
 
 A working, verified prototype already exists in this folder. Your job is to IMPROVE it, not rebuild it.
-PROTOTYPE_SPEC.md describes it; section 9 records what was built and verified.
 
 ## The one idea it must land in 90 seconds
 "Spending limits control how much an agent spends. This shows how well it chose, even when the agent is Flipkart's own."
@@ -40,10 +39,10 @@ PROTOTYPE_SPEC.md describes it; section 9 records what was built and verified.
 After every change, run node tools/check.js; all checks must pass in Chromium and Edge. tools/ is never included in the submission zip.
 
 ## Tool priorities
-- This file and PROTOTYPE_SPEC.md win over any plugin's defaults.
+- This file wins over any plugin's defaults.
 - Playwright: verify visually after every change.
 - Ponytail: keep code lean, but never remove anything the spec requires.
 - Superpowers: debugging and "verify before done" only; no brainstorm or planning workflows.
 
 ## Packaging for submission
-Zip only: index.html, styles.css, data.js, logic.js, lock.js, ui.js, panel.js, fonts/. No markdown, no screenshots. Name: "Madduri Venkata Yashwanth_IIT Madras.zip".
+Zip only: index.html, styles.css, js/, fonts/. No markdown, no screenshots. Name: "Madduri Venkata Yashwanth_IIT Madras.zip".
