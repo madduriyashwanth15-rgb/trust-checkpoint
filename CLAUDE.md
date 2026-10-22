@@ -29,6 +29,7 @@ PROTOTYPE_SPEC.md describes it; section 9 records what was built and verified.
 2. Click through: Raise limit, Raise with a rule, Save, PIN 1234, Fast-forward 1 month, Next, Let me handle Electronics, Hand over. Then in the panel: Edit an old record, Hide an option, Reset; slider to 0% (tie-breaks 100%).
 3. Screenshot at 1440x900 and 390x844. No horizontal scroll at 390.
 4. Report pass or fail for every number in rule 2.
+After every change, run node tools/check.js; all checks must pass in Chromium and Edge. tools/ is never included in the submission zip.
 
 ## Tool priorities
 - This file and PROTOTYPE_SPEC.md win over any plugin's defaults.
