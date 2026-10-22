@@ -8,11 +8,19 @@ PROTOTYPE_SPEC.md describes it; section 9 records what was built and verified.
 
 ## Files
 - index.html, styles.css: page and look
-- data.js, logic.js: seeded mock data and the checks. FROZEN.
-- lock.js: record fingerprints (SHA-256 chain) and the checker's own catalogue snapshot
-- ui.js: phone screens, trust card, sheets, story steps
-- panel.js: "What Priya can't see" side panel
+- js/data.js, js/logic.js: seeded mock data and the checks. FROZEN.
+- js/lock.js: record fingerprints (SHA-256 chain) and the checker's own catalogue snapshot
+- js/util.js: shared helpers
+- js/model.js: derives everything the UI shows from data, Logic and Lock
+- js/art.js: illustrated product tiles (inline SVG)
+- js/field.js: the dot field, one dot per agent choice
+- js/panel.js: the Trust Checkpoint card
+- js/lab.js: "Behind the scenes" controls
+- js/about.js: "How I built this"
+- js/intro.js: skippable cold open
+- js/app.js: state, chapters and events
 - fonts/: Lexend and Outfit, bundled locally
+- tools/check.js: Playwright check list (dev only)
 
 ## Hard rules
 1. NEVER edit data.js or logic.js, and never add, remove or reorder calls to Logic.simulateAgent or the random generator. The two-pager PDF quotes their output.

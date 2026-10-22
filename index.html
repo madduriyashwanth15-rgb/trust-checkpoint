@@ -3,51 +3,57 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Trust Checkpoint · 2040 concept</title>
+<title>Trust Checkpoint · a 2040 concept</title>
 <link rel="stylesheet" href="styles.css">
 </head>
-<body>
+<body data-mode="ask" data-c="0">
+
+<div class="intro" id="intro" role="dialog" aria-label="Introduction" hidden>
+  <div class="rain" id="rain" aria-hidden="true"></div>
+  <p class="line year" id="l1">2040.</p>
+  <p class="line" id="l2">Priya's agents made <span class="count" id="cnt">0</span> choices for her in 3 months.<small>She checked almost none of them.</small></p>
+  <p class="line" id="l3">Every one looked fine.<span class="ok"> &#10003;</span></p>
+  <div class="tie" id="tie" aria-hidden="true"><div class="can" id="i-usual"></div><div class="can pick" id="i-spons"></div></div>
+  <p class="line low" id="l4">Same price. Same rating. The sponsor won.<small>Not a mistake she would ever notice. A choice made for someone else.</small></p>
+  <button class="skip" id="skip" type="button">Skip intro</button>
+</div>
+
 <header class="top">
-  <div class="top-title">
-    <h1>Trust Checkpoint</h1>
-    <p>A 2040 concept for Flipkart's agent products. Follow Priya's day: tap the button with the pulsing ring.</p>
-  </div>
-  <button class="restart" id="restart" type="button">Restart story</button>
+  <div class="brand-wrap"><span class="brand"><i aria-hidden="true"></i>Trust Checkpoint</span><span class="tagline">Before your agent gets more power, see its record.</span></div>
+  <nav class="top-r" aria-label="Page">
+    <button type="button" class="tplay" id="playBtn" data-act="play">Play the story · 1 min</button>
+    <button type="button" class="tlink" data-act="about">How I built this</button>
+    <button type="button" class="tbtn" id="labBtn" data-act="lab" aria-expanded="false" aria-controls="lab">Behind the scenes</button>
+  </nav>
 </header>
 
 <main class="stage">
-  <nav class="story" aria-label="Priya's day">
-    <h2>Priya's day</h2>
-    <ol id="story"></ol>
-    <p class="story-note">Every number on the card is computed from seeded mock data. Nothing is typed in by hand.</p>
-  </nav>
-
-  <section class="device" aria-label="Phone">
-    <div class="switcher" role="tablist" aria-label="Choose an app">
-      <button role="tab" id="tab-money" aria-selected="true" type="button">Money app 2040</button>
-      <button role="tab" id="tab-shop" aria-selected="false" type="button">Shopping app 2040</button>
-    </div>
-    <p class="caption" id="caption">Our vision: Flipkart in 2040</p>
-    <div class="phone-wrap" id="phoneWrap">
-      <div class="phone" id="phone">
-        <div class="statusbar" aria-hidden="true"><span>9:41</span><span class="sb-right">5G · 92%</span></div>
-        <div class="screen" id="screen"></div>
-        <div class="scrim" id="scrim" hidden></div>
-        <div class="sheet-host" id="sheetHost"></div>
-        <div class="toast" id="toast" role="status" aria-live="polite"></div>
-      </div>
-    </div>
+  <section class="world" aria-label="Priya's agent">
+    <div class="agent-line" id="agentLine" aria-live="polite"></div>
+    <div class="field" id="field" role="img" aria-label="Each dot is one choice Priya's agents made for her"></div>
+    <div class="ask-btns" id="askBtns"></div>
+    <div class="legend" id="legend"></div>
   </section>
-
-  <aside class="xray" id="panel" aria-label="What Priya can't see"></aside>
+  <aside class="panel" id="panel" aria-label="Trust Checkpoint" aria-live="polite"></aside>
+  <aside class="lab" id="lab" aria-label="Behind the scenes"></aside>
 </main>
 
-<footer class="disclaimer">Concept prototype for Flipkart APM '29. Not affiliated with or endorsed by Flipkart or Super.money. All brands, people and numbers are invented mock data.</footer>
+<div class="cap" id="cap"></div>
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+<div class="about" id="about" hidden></div>
+<footer class="disclaimer">Our vision: Flipkart and Super.money agents in 2040. Concept prototype for Flipkart APM '29. Not affiliated with or endorsed by Flipkart or Super.money. All brands, people and numbers are invented mock data.</footer>
 
-<script src="data.js"></script>
-<script src="logic.js"></script>
-<script src="lock.js"></script>
-<script src="ui.js"></script>
-<script src="panel.js"></script>
+<script src="js/util.js"></script>
+<script src="js/data.js"></script>
+<script src="js/logic.js"></script>
+<script src="js/lock.js"></script>
+<script src="js/model.js"></script>
+<script src="js/art.js"></script>
+<script src="js/field.js"></script>
+<script src="js/panel.js"></script>
+<script src="js/lab.js"></script>
+<script src="js/about.js"></script>
+<script src="js/intro.js"></script>
+<script src="js/app.js"></script>
 </body>
 </html>

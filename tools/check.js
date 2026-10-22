@@ -1,160 +1,149 @@
-// Runs the CLAUDE.md check list against index.html?debug=1 in Chromium and Edge. Read-only: never writes to the prototype.
-// Usage (from the project folder): node tools/check.js
-const { chromium } = require('playwright-core');
-const fs = require('fs');
+// Full check list for the Trust Checkpoint prototype. Run: node tools/check.js
+// Checks every number the two-pager quotes, every chapter, the failure and disagreement states, and layout.
+// Browsers: Chromium (bundled or CHROME_PATH) and Microsoft Edge (channel "msedge", skipped if not installed).
 const path = require('path');
-const { pathToFileURL } = require('url');
-const ROOT = path.resolve(__dirname, '..');
-const URL = pathToFileURL(path.join(ROOT, 'index.html')).href + '?debug=1';
-const OUT = path.join(__dirname, 'screenshots');
-const wait = ms => new Promise(r => setTimeout(r, ms));
+const fs = require('fs');
+const { chromium } = require('playwright');
 
-// Playwright's own Chromium: use whichever build is installed, so a playwright-core upgrade does not need a re-download.
-function chromiumExe() {
-  const base = path.join(process.env.LOCALAPPDATA || '', 'ms-playwright');
-  const dirs = fs.existsSync(base) ? fs.readdirSync(base).filter(d => /^chromium-\d+$/.test(d)).sort((a, b) => +b.split('-')[1] - +a.split('-')[1]) : [];
-  for (const d of dirs) { const exe = path.join(base, d, 'chrome-win64', 'chrome.exe'); if (fs.existsSync(exe)) return exe; }
-  return undefined; // fall back to playwright-core's default lookup
+const ROOT = path.resolve(__dirname, '..');
+const URL = 'file:///' + path.join(ROOT, 'index.html').replace(/\\/g, '/').replace(/^\/+/, '') + '?nointro=1&debug=1';
+const SHOTS = path.join(__dirname, 'screenshots');
+fs.mkdirSync(SHOTS, { recursive: true });
+
+async function launch(name) {
+  if (name === 'edge') return chromium.launch({ channel: 'msedge' });
+  if (process.env.CHROME_PATH) return chromium.launch({ executablePath: process.env.CHROME_PATH });
+  try { return await chromium.launch(); } catch (e) { return chromium.launch({ channel: 'chrome' }); }
 }
 
-async function run(label, launchOpts) {
+async function run(name) {
   const results = [];
-  const check = (name, ok, got) => results.push({ name, ok: !!ok, got });
-  const shot = name => path.join(OUT, label.toLowerCase() + '-' + name + '.png');
-  const browser = await chromium.launch(launchOpts);
-  try {
-    const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
-    const logs = [], errors = [], requests = [];
-    page.on('console', m => logs.push(m.type() + ': ' + m.text()));
-    page.on('pageerror', e => errors.push(String(e)));
-    page.on('request', r => { if (!/^(file|blob|data):/.test(r.url())) requests.push(r.url()); });
+  const ok = (label, cond) => results.push([label, !!cond]);
+  let browser;
+  try { browser = await launch(name); } catch (e) { return { name, skipped: 'not available: ' + e.message.split('\n')[0] }; }
+  const ctx = await browser.newContext({ viewport: { width: 1440, height: 900 }, acceptDownloads: true });
+  const pg = await ctx.newPage();
+  const logs = [], errors = [];
+  pg.on('console', m => { logs.push(m.text()); if (m.type() === 'error' || m.type() === 'assert' || /Assertion failed/.test(m.text())) errors.push(m.type() + ': ' + m.text()); });
+  pg.on('pageerror', e => errors.push(String(e)));
+  pg.on('request', r => { if (!r.url().startsWith('file:') && !r.url().startsWith('blob:') && !r.url().startsWith('data:')) errors.push('network: ' + r.url()); });
+  const shot = n => pg.screenshot({ path: path.join(SHOTS, name + '-' + n + '.png') });
+  const panel = () => pg.innerText('#panel');
+  const field = () => pg.innerText('#field');
+  const cap = () => pg.innerText('#cap');
+  const settle = (ms = 1300) => pg.waitForTimeout(ms);
 
-    await page.goto(URL); await wait(800);
-    const sheet = page.locator('#sheetHost');
-    const txt = async l => (await l.innerText()).replace(/\s+/g, ' ');
-    const act = a => page.locator(`[data-act="${a}"]`).first().click();
+  await pg.goto(URL); await settle(900);
+  ok('Console debug line exact', logs.some(l => l === '[debug] Groceries 47/55, Personal care 9/15 Rs 18 amber, Household 8/11, spot-check 8/10. Self-tests done.'));
+  ok('Tagline and disclaimer visible', (await pg.innerText('.tagline')).includes('Before your agent gets more power, see its record.') && await pg.isVisible('.disclaimer'));
+  ok('The ask: 120 choices, limit to ₹15,000', /120 choices[\s\S]*₹10,000 to ₹15,000/.test(await pg.innerText('#agentLine')));
+  ok('120 dots, all agent blue before the checkpoint', (await pg.$$eval('#field .d', n => n.length)) === 120 && (await pg.$$eval('#field .d.k-agent', n => n.length)) === 120);
+  await shot('01-ask');
 
-    // 1. Console
-    const dbg = logs.find(l => l.includes('[debug]')) || '';
-    check('Console debug line exact', dbg.includes('[debug] Groceries 47/55, Personal care 9/15 Rs 18 amber, Household 8/11, spot-check 8/10. Self-tests done.'), dbg);
-    check('No "Assertion failed" / errors', !logs.some(l => /assert|error/i.test(l.split(':')[0]) || /Assertion failed/.test(l)) && !errors.length, JSON.stringify(logs.filter(l => !l.includes('[debug]')).concat(errors)));
-    await page.screenshot({ path: shot('01-default-1440') });
+  await pg.click('[data-act=allow]'); await settle();
+  let c = await panel();
+  ok('Card title matches PDF', c.includes('Before you raise the limit to ₹15,000'));
+  ok('Badge: Default checker, rules public', c.includes('Default checker · rules public') && !/independent check/i.test(c));
+  ok('Groceries 47 of 55, Earned', /Groceries · Earned\s*47 of 55 ties went your way/.test(c));
+  ok('Personal care 9 of 15, ₹18, Check', /Personal care · Check\s*9 of 15 ties yours · overpaid ₹18 a month elsewhere/.test(c));
+  ok('Example line', c.includes('At a tie, it picked sponsored Brand Q deodorant over your usual Brand Y.'));
+  ok('Gold 3 of 3', c.includes('Bought at your price 3 of 3 times'));
+  ok('Spot-check 8 of 10, Simulated', /Spot-check: 8 of 10 sampled picks passed\s*Simulated/.test(c));
+  ok('Three choices with consequences', c.includes('Raise with a rule') && c.includes('Not yet') && c.includes('Limit stays ₹10,000'));
+  ok('Dots coloured: 6 personal-care sponsor ties', (await pg.$$eval('#field .d.k-tie[data-cat="Personal care"]', n => n.length)) === 6);
+  ok('Field labels match the card', (await field()).includes('47 of 55 ties hers') && (await field()).includes('9 of 15 ties hers'));
+  await shot('02-checkpoint');
 
-    check('Panel default: Personal care 26 of 26 fingerprints', (await txt(page.locator('#cheatOut'))).includes('26 of 26 fingerprints match'), await txt(page.locator('#cheatOut')));
+  await pg.click('#panel [data-act=checker]'); await settle(400);
+  ok('Second opinion from the card keeps chapter 2', (await cap()).includes('2 of 5'));
+  await pg.click('#panel [data-act=cb][data-v=strict]'); await settle(500);
+  c = await panel();
+  ok('Second opinion labelled simulated', c.includes('Simulated') && c.includes('Outside checkers are planned, not live'));
+  ok('Disagreement explained', c.includes('Why they disagree on') && c.includes('the bar is') && c.includes('Stricter is not automatically right'));
+  await shot('02b-second-opinion');
+  await pg.click('#panel [data-act=cb][data-v=same]'); await settle(200);
+  await pg.click('#panel [data-act=back]'); await settle(300);
+  ok('Electronics: no history, so no verdict', (await panel()).includes('Electronics: not handled yet, so no verdict'));
 
-    // 2. Raise limit -> card
-    await act('raise'); await wait(500);
-    const card = await txt(sheet);
-    await page.screenshot({ path: shot('02-card-raise-1440') });
-    check('Card title', card.includes('Before you raise the limit to ₹15,000'), card.slice(0, 80));
-    check('Groceries 47 of 55, Earned', /Groceries · Earned 47 of 55 ties/.test(card), card.match(/Groceries[^G]*?ties[^·]*/)?.[0]);
-    check('Personal care 9 of 15, overpaid ₹18 a month, Check', /Personal care · Check 9 of 15 ties yours · overpaid ₹18 a month/.test(card), card.match(/Personal care.*?a month[^G]*/)?.[0]);
-    check('Gold bought at your price 3 of 3 times', /Bought at your price 3 of 3 times/.test(card), card.match(/Gold.*?times/)?.[0]);
-    check('Spot-check 8 of 10 passed (Simulated)', /Spot-check: 8 of 10 sampled picks passed Simulated/.test(card), card.match(/Spot-check.*?Simulated/)?.[0]);
-    check('Badge "Default checker · rules public"', card.includes('Default checker · rules public'), '');
-    check('Example line', card.includes('At a tie, it picked sponsored Brand Q deodorant over your usual Brand Y.'), card.match(/At a tie[^.]*\./)?.[0]);
+  await pg.click('[data-act=evidence]'); await settle();
+  c = await panel();
+  ok('Evidence: three tie tests', c.includes('Same lowest total cost') && c.includes('Ratings within 0.1') && c.includes('Both match what she asked for'));
+  ok('Evidence: picked option marked', c.includes('Brand Q (picked)'));
+  ok('Evidence: privacy boundary', c.includes('Stays private') && c.includes('With your consent'));
+  ok('Evidence: fingerprint matches', c.includes('matches what was written at the moment of choice'));
+  ok('Evidence: exactly one dot ringed', (await pg.$$eval('#field .d.ring', n => n.length)) === 1);
+  await shot('03-evidence');
+  await pg.click('#panel [data-act=back]'); await settle(400);
+  ok('Back from the evidence returns to the card', (await panel()).includes('Before you raise the limit'));
 
-    // Full details: fingerprints
-    await act('details'); await wait(400);
-    const det = await txt(sheet);
-    await page.screenshot({ path: shot('03-details-1440') });
-    check('Details: Personal care 26 of 26 fingerprints match', det.includes('Personal care: 26 of 26 fingerprints match'), det.match(/Personal care: \d+ of \d+ fingerprints match/)?.[0]);
-    check('Details: Electronics 0 decisions, Not enough evidence yet', /Electronics 0 decisions - Not enough evidence yet/.test(det), det.match(/Electronics[^H]*?yet/)?.[0]);
-    await act('checker'); await wait(300);
-    const chk = await txt(sheet);
-    check('Checker B labelled simulated', chk.includes('Checker B (simulated)') && chk.includes('Simulated'), '');
-    await page.keyboard.press('Escape'); await wait(200);
-    await page.keyboard.press('Escape'); await wait(300);
-    check('Escape closes sheets back to card', (await txt(sheet)).includes('Before you raise the limit'), '');
+  await pg.click('[data-act=raise-rule]'); await settle();
+  ok('Rule preview: 6 personal care', (await panel()).includes('6 personal care'));
+  ok('Rule preview rings the sponsor ties', (await pg.$$eval('#field .d.flip', n => n.length)) > 0);
+  await pg.click('[data-act=rule-raise]'); await pg.waitForTimeout(1900);
+  ok('Raised with 1 rule', (await pg.innerText('#toast')).includes('Limit raised to ₹15,000 with 1 rule'));
+  await pg.click('#panel [data-act=ff]'); await settle();
+  c = await panel();
+  ok('Payoff 4 of 4', c.includes('4 of 4'));
+  ok('Payoff 2 without the rule', c.includes('against 2 without the rule'));
+  ok('Payoff honest about the bill', c.includes('changes whose brand wins, not the bill'));
+  ok('Personal care now Earned, 11 of 15', c.includes('Earned') && c.includes('11 of 15 ties yours'));
+  await shot('04-payoff');
 
-    // Raise with a rule -> Save -> PIN 1234
-    await act('raise-rule'); await wait(300);
-    await act('rule-save-raise'); await wait(300);
-    for (const k of ['1', '2', '3', '4']) await page.locator(`[data-act="pin"][data-k="${k}"]`).click();
-    await wait(700);
-    const home = await txt(page.locator('#screen'));
-    check('Limit raised to ₹15,000 with rule', home.includes('₹8,200 of ₹15,000') && home.includes('Rule on'), home.match(/₹8,200 of [^ ]+/)?.[0]);
+  await pg.click('#cap [data-act=next]'); await settle();
+  ok('Closing chapter: limit sees totals, checkpoint sees choices', (await field()).includes('All within limit') && (await field()).includes('What Trust Checkpoint sees'));
+  ok('Closing chapter: the takeaway', (await panel()).includes('Your agent works for you only if you can check its record.'));
+  await shot('05-limits');
+  await pg.click('#panel [data-act=about]'); await settle(500);
+  ok('How I built this: thinking and shipping', (await pg.innerText('#about')).includes('How I shipped it') && (await pg.innerText('#about')).includes('North star'));
+  await shot('06-about');
+  await pg.keyboard.press('Escape'); await settle(300);
+  ok('Escape closes How I built this', await pg.evaluate(() => document.getElementById('about').hidden));
 
-    // Fast-forward 1 month
-    await act('ff'); await wait(500);
-    const pay = await txt(page.locator('#screen'));
-    await page.screenshot({ path: shot('04-payback-1440') });
-    check('After rule + FF: 4 of 4 personal-care ties', /4 of 4 personal-care ties went your way/.test(pay), pay.match(/\d+ of \d+ personal-care/)?.[0]);
-    check('Without the rule: 2 of 4', pay.includes('Without the rule: 2 of 4.'), pay.match(/Without the rule: [^.]*/)?.[0]);
-    check('Personal care 11 of 15, Earned', /Personal care · Earned Last 3 months: 11 of 15 ties/.test(pay), pay.match(/Personal care · .*?ties/)?.[0]);
+  await pg.click('#labBtn'); await settle(500);
+  await pg.click('#lab [data-act=restart]'); await settle(900);
+  ok('Restart from Behind the scenes shows the record', (await panel()).includes('Before you raise the limit'));
+  await pg.click('#c-edit'); await settle(250);
+  ok('Cheat: edited record caught (25 of 26)', (await pg.innerText('#cheatOut')).includes('25 of 26'));
+  await pg.click('#c-hide'); await settle(250);
+  ok('Cheat: hidden option caught (Brand Y ₹249)', (await pg.innerText('#cheatOut')).includes('Brand Y at ₹249'));
+  await shot('08-cheats');
+  await pg.click('#c-reset'); await settle(250);
+  ok('Reset: 26 of 26 unchanged', (await pg.innerText('#cheatOut')).includes('26 of 26'));
+  await pg.fill('#infl', '0'); await pg.dispatchEvent('#infl', 'input'); await settle(700);
+  ok('Sponsors 0%: 100% of ties, no amber dots', (await pg.innerText('#m-tie')).trim() === '100%' && (await pg.$$eval('#field .d.k-tie', n => n.length)) === 0);
+  await pg.fill('#infl', '60'); await pg.dispatchEvent('#infl', 'input'); await settle(300);
+  await pg.check('#d-rule'); await settle(700);
+  ok('Tie rule: 100% of ties even at 60%', (await pg.innerText('#m-tie')).trim() === '100%');
+  await pg.uncheck('#d-rule'); await pg.fill('#infl', '40'); await pg.dispatchEvent('#infl', 'input'); await settle(300);
+  const dl = pg.waitForEvent('download');
+  await pg.click('#lab [data-act=export]');
+  ok('Export downloads records', (await dl).suggestedFilename() === 'priya-agent-records.json');
+  await pg.keyboard.press('Escape'); await settle(300);
+  ok('Escape closes Behind the scenes', !(await pg.evaluate(() => document.body.classList.contains('lab-open'))));
 
-    // Next -> shopping app -> Electronics
-    await act('toshop'); await wait(400);
-    await act('electronics'); await wait(500);
-    const el = await txt(sheet);
-    await page.screenshot({ path: shot('05-electronics-1440') });
-    check('Electronics grey "Not enough evidence yet"', /Electronics · Not enough evidence yet/.test(el) && (await page.locator('#sheetHost .crow .dot.grey').count()) >= 1, el.match(/Electronics · [^0-9]*/)?.[0]);
-    await act('handover'); await wait(400);
-    check('Hand over adds Electronics chip', (await txt(page.locator('#screen'))).includes('Electronics'), '');
-    check('Story complete', (await txt(page.locator('#story'))).includes("That's the story"), '');
-
-    // Panel: cheats
-    await page.click('#c-edit'); await wait(300);
-    const outE = await txt(page.locator('#cheatOut'));
-    check('Edit old record: fingerprint drops + caught', /Personal care records: 25 of 26 fingerprints match\. Caught/.test(outE), outE);
-    await act('view'); await wait(400);
-    check('Card shows "Record changed after it was written"', (await txt(sheet)).includes('Record changed after it was written'), '');
-    await page.keyboard.press('Escape'); await wait(200);
-    await page.click('#c-hide'); await wait(300);
-    const outH = await txt(page.locator('#cheatOut'));
-    check('Hide an option: spot-check catches Brand Y ₹249', outH.includes('Brand Y at ₹249 was left out'), outH);
-    await page.screenshot({ path: shot('06-cheats-1440') });
-    await page.click('#c-reset'); await wait(300);
-    const outR = await txt(page.locator('#cheatOut'));
-    check('Reset restores all fingerprints', /(\d+) of \1 fingerprints match\.$/.test(outR.trim()), outR);
-
-    // Slider to 0%
-    await page.locator('#infl').fill('0'); await wait(700);
-    const tie = await page.locator('#m-tie').innerText();
-    check('Slider 0%: tie-breaks 100%', tie === '100%', tie);
-    await page.screenshot({ path: shot('07-slider0-1440') });
-
-    check('No horizontal scroll at 1440', await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth), '');
-
-    // 3. Mobile 390x844
-    const m = await browser.newPage({ viewport: { width: 390, height: 844 } });
-    const mErr = [];
-    m.on('pageerror', e => mErr.push(String(e)));
-    await m.goto(URL); await wait(800);
-    await m.screenshot({ path: shot('08-default-390') });
-    await m.screenshot({ path: shot('09-default-390-full'), fullPage: true });
-    const sw = await m.evaluate(() => [document.documentElement.scrollWidth, innerWidth]);
-    check('No horizontal scroll at 390', sw[0] <= sw[1], sw.join(' vs '));
-    await m.locator('[data-act="raise"]').click(); await wait(500);
-    await m.locator('#phone').screenshot({ path: shot('10-card-390') });
-    const sw2 = await m.evaluate(() => [document.documentElement.scrollWidth, innerWidth]);
-    check('No horizontal scroll at 390 with card open', sw2[0] <= sw2[1], sw2.join(' vs '));
-    check('No page errors at 390', !mErr.length, mErr.join('; '));
-
-    check('No network requests', !requests.length, requests.join(', '));
-    check('Footer disclaimer visible', await page.locator('footer.disclaimer').isVisible(), '');
-  } catch (e) {
-    check('Run completed', false, e.message.split('\n')[0]);
-  } finally {
-    await browser.close();
-  }
-  return results;
+  const mob = await ctx.newPage(); await mob.setViewportSize({ width: 390, height: 844 });
+  mob.on('pageerror', e => errors.push(String(e)));
+  await mob.goto(URL); await mob.waitForTimeout(900);
+  ok('Mobile: no horizontal scroll on the ask', (await mob.evaluate('document.documentElement.scrollWidth')) <= 390);
+  await mob.click('[data-act=allow]'); await mob.waitForTimeout(1400);
+  const pb = await mob.evaluate(() => { const r = document.getElementById('panel').getBoundingClientRect(); return [r.left, r.right, document.documentElement.scrollWidth]; });
+  ok('Mobile: checkpoint fits the screen', pb[0] >= 0 && pb[1] <= 390 && pb[2] <= 390);
+  await mob.screenshot({ path: path.join(SHOTS, name + '-09-mobile.png'), fullPage: true });
+  ok('No console errors or network calls', errors.length === 0);
+  if (errors.length) console.log('  errors:', errors.slice(0, 5));
+  await browser.close();
+  return { name, results };
 }
 
 (async () => {
-  fs.mkdirSync(OUT, { recursive: true });
-  const runs = [['Chromium', { executablePath: chromiumExe() }], ['Edge', { channel: 'msedge' }]];
-  let failed = 0;
-  for (const [label, opts] of runs) {
-    let results;
-    try { results = await run(label, opts); } catch (e) { results = [{ name: 'Browser launched', ok: false, got: e.message.split('\n')[0] }]; }
-    console.log('\n== ' + label + ' ==');
-    for (const r of results) console.log((r.ok ? 'PASS' : 'FAIL') + '  ' + r.name + (r.ok ? '' : '  -> got: ' + r.got));
-    const pass = results.filter(r => r.ok).length;
-    console.log(`${label}: ${pass}/${results.length} passed`);
-    failed += results.length - pass;
+  let failed = 0, ran = [];
+  for (const b of ['chromium', 'edge']) {
+    const r = await run(b);
+    if (r.skipped) { console.log(`\n${b}: SKIPPED (${r.skipped})`); continue; }
+    ran.push(b);
+    console.log(`\n${b}:`);
+    r.results.forEach(([l, p]) => { console.log((p ? 'PASS ' : 'FAIL ') + l); if (!p) failed++; });
   }
-  console.log('\nScreenshots: ' + OUT);
-  console.log(failed ? `\nFAIL: ${failed} check(s) failed` : '\nALL PASS in Chromium and Edge');
+  console.log(failed ? `\n${failed} check(s) FAILED` : `\nALL PASS in ${ran.join(' and ')}`);
   process.exit(failed ? 1 : 0);
 })();
