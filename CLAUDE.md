@@ -12,12 +12,10 @@ A working, verified prototype already exists in this folder. Your job is to IMPR
 - js/util.js: shared helpers
 - js/model.js: derives everything the UI shows from data, Logic and Lock
 - js/art.js: illustrated product tiles (inline SVG)
-- js/field.js: the dot field, one dot per agent choice
-- js/panel.js: the Trust Checkpoint card
-- js/lab.js: "Behind the scenes" controls
+- js/screens.js: the app inside the phone and the Trust Checkpoint sheet
+- js/lens.js: the magnifier lens over the agent's picks
 - js/about.js: "How I built this"
-- js/intro.js: skippable cold open
-- js/app.js: state, chapters and events
+- js/app.js: state, steps and events. The story has 6 steps: ask, look closer, checkpoint, why, rule, a month later
 - fonts/: Lexend and Outfit, bundled locally
 - tools/check.js: Playwright check list (dev only)
 
@@ -45,4 +43,4 @@ After every change, run node tools/check.js; all checks must pass in Chromium an
 - Superpowers: debugging and "verify before done" only; no brainstorm or planning workflows.
 
 ## Packaging for submission
-Zip only: index.html, styles.css, js/, fonts/. No markdown, no screenshots. Name: "Madduri Venkata Yashwanth_IIT Madras.zip".
+Zip only: index.html, styles.css, og.png, js/, fonts/. No markdown, no screenshots. Name: "Madduri Venkata Yashwanth_IIT Madras.zip".
