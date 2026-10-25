@@ -22,11 +22,14 @@ var Screens = (function () {
     var used = DATA.moneyAgent.shoppingBudgetUsed, pct = Math.min(100, Math.round(used / S.limit * 100));
     var h = '<div class="app">';
     h += '<header class="a-top"><div class="a-row"><span class="a-hi">Hi Priya</span><span class="a-av" aria-hidden="true">P</span></div>' +
-      '<div class="a-search"><span class="ic">' + I.search + '</span><span>Ask your agent or search</span><span class="ic mic">' + I.mic + '</span></div></header>';
+      '<div class="a-search" data-act="dead"><span class="ic">' + I.search + '</span><span>Ask your agent or search</span><span class="ic mic">' + I.mic + '</span></div></header>';
     h += '<section class="agent"><div class="ag-head">' + orb(30) + '<div><b>Your shopping agent</b><span><i class="live"></i>Active · ' + M.decisions + ' choices this quarter</span></div></div>' +
       '<div class="ag-limit"><div class="ag-l1"><span>Monthly limit</span><b>' + inr(S.limit) + '</b></div><div class="bar"><i style="width:' + pct + '%"></i></div><span class="ag-used">' + inr(used) + ' used' + (S.ruleFrom !== null ? '<em class="rule-on">' + I.shield + 'Rule on: ties go to your usual brand</em>' : '') + '</span></div>';
     if (S.step === 1) {
-      h += '<div class="ask mini"><p class="ask-q">Can I raise my monthly limit to ' + inr(DATA.moneyAgent.proposedLimit) + '?</p><button type="button" class="btn pri allow" data-act="allow" data-hot="allow2">Allow</button></div>';
+      h += '<div class="hold"><div class="hold-h"><span class="cp-badge">' + I.shield + 'Trust Checkpoint</span><span class="hold-st">Paused</span></div>' +
+        '<p class="hold-q">Your agent asked to raise its limit to ' + inr(DATA.moneyAgent.proposedLimit) + '. Before you allow it, look at what it picked for you.</p>' +
+        '<p class="hold-w">Runs through your bank or payment app, not your agent, so the agent cannot skip it.</p>' +
+        '<button type="button" class="btn pri wide" data-act="allow" data-hot="allow2">See its record</button></div>';
     }
     if (S.step === 0) {
       h += '<div class="ask"><p class="ask-q">Can I raise my monthly limit to ' + inr(DATA.moneyAgent.proposedLimit) + '?</p><p class="ask-why">Your usuals are running out faster this month.</p>' +
@@ -36,7 +39,7 @@ var Screens = (function () {
     if (S.step === 5 && S.payback) h += report(M, S);
     h += picks(M, S);
     h += '</div>';
-    h += '<nav class="a-nav" aria-hidden="true"><span class="on">' + I.home + 'Home</span><span>' + I.grid + 'Categories</span><span class="agent-tab">' + orb(22) + 'Agent</span><span>' + I.user + 'Account</span><span>' + I.cart + 'Cart</span></nav>';
+    h += '<nav class="a-nav" aria-hidden="true"><span class="on" data-act="dead">' + I.home + 'Home</span><span data-act="dead">' + I.grid + 'Categories</span><span class="agent-tab" data-act="dead">' + orb(22) + 'Agent</span><span data-act="dead">' + I.user + 'Account</span><span data-act="dead">' + I.cart + 'Cart</span></nav>';
     return h;
   }
   // The four picks the lens can look at: the real purchases, chosen so every kind of decision appears once.
@@ -59,7 +62,7 @@ var Screens = (function () {
   function picks(M, S) {
     var list = lensSet(M), full = !!S.lensFull;
     var face = list.map(function (x, i) {
-      return '<div class="p-tile" data-i="' + i + '"><div class="p-img">' + Art.product(x.category, x.chosen.brand, x.item, 44) + '</div><b>' + esc(x.item) + '</b><span>' + esc(x.chosen.brand) + ' · ' + inr(x.chosen.total) + '</span><em>' + orb(10) + 'Agent pick</em></div>';
+      return '<div class="p-tile" data-i="' + i + '" data-act="dead"><div class="p-img">' + Art.product(x.category, x.chosen.brand, x.item, 44) + '</div><b>' + esc(x.item) + '</b><span>' + esc(x.chosen.brand) + ' · ' + inr(x.chosen.total) + '</span><em>' + orb(10) + 'Agent pick</em></div>';
     }).join('');
     var xr = list.map(function (x, i) {
       var t = truth(x);

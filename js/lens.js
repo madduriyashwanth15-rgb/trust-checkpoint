@@ -67,19 +67,28 @@ var LensUI = (function () {
     pk.addEventListener('pointermove', function (e) {
       if (e.pointerType === 'touch' && !hold) return;
       if (e.pointerType === 'touch' && hold && hold.live === false) return;
-      var p = local(e); moveTo(p.x, p.y);
+      var p = local(e); user(); moveTo(p.x, p.y);
     });
     pk.addEventListener('pointerleave', function (e) { if (e.pointerType !== 'touch') off(); });
     pk.addEventListener('pointerdown', function (e) {
       if (e.pointerType !== 'touch') return;
       var p = local(e);
-      hold = { live: false, t: setTimeout(function () { hold.live = true; moveTo(p.x, p.y); }, 160) };
+      hold = { live: false, p: p, t: setTimeout(function () { hold.live = true; user(); moveTo(p.x, p.y); }, 160) };
     });
-    function up(e) { if (e.pointerType !== 'touch' || !hold) return; clearTimeout(hold.t); var was = hold.live; hold = null; if (was) off(); }
+    // a quick tap also looks at that pick; a hold follows the finger
+    function up(e) { if (e.pointerType !== 'touch' || !hold) return; clearTimeout(hold.t); var was = hold.live, p = hold.p; hold = null; if (was) off(); else if (S && S.step === 1) { user(); moveTo(p.x, p.y); } }
     pk.addEventListener('pointerup', up); pk.addEventListener('pointercancel', up);
     apply();
   }
 
+  // the visitor took over: stop any intro sweep and tell the app
+  function user() { stopGlide(); if (window.App && App.touched) App.touched(); }
+  // first look after Allow: sweep once across the picks, then rest on the sponsored tie
+  function tour() {
+    stopGlide();
+    var order = [1, 2, 3, 0], step = U.reduce ? 150 : 700;
+    order.forEach(function (i, k) { timers.push(setTimeout(function () { park(i); }, 500 + k * step)); });
+  }
   // autoplay: glide across the four picks, then reveal everything at once
   function glide() {
     stopGlide();
@@ -90,5 +99,5 @@ var LensUI = (function () {
   }
   function stopGlide() { timers.forEach(clearTimeout); timers = []; }
 
-  return { bind: bind, park: park, glide: glide, stopGlide: stopGlide, state: function () { return st; } };
+  return { bind: bind, park: park, glide: glide, tour: tour, stopGlide: stopGlide, state: function () { return st; } };
 })();

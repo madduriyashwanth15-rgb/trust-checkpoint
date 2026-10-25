@@ -1,12 +1,15 @@
 // State and flow. Six steps: the ask, look closer, the checkpoint, why, the rule, a month later.
+// v8: the visitor moves the story by using the app (Allow, the lens, See why...). A coach mark inside the phone
+// points at the one thing to do next; Back/Next are gone, and every dead tap answers.
 var App = (function () {
   var S, M, $ = U.$, inr = U.inr, timer = null, T = [];
   var HOT = ['allow', 'lens', 'why', 'rule', 'raise', null];
+  var TOUCH = window.matchMedia && matchMedia('(pointer: coarse)').matches;
   var LAST = 5, Lens = null;
 
   function base(s) {
     s.step = 0; s.view = null; s.now = DATA.historyWeeks; s.limit = DATA.moneyAgent.monthlyLimit; s.ruleFrom = null; s.askAbove = null;
-    s.raised = false; s.payback = null; s.draft = { tie: true, ask: null }; s.confirming = false; s.checkerB = 'same'; s.ended = false; s.lensFull = false;
+    s.raised = false; s.payback = null; s.draft = { tie: true, ask: null }; s.confirming = false; s.checkerB = 'same'; s.ended = false; s.lensFull = false; s.lensUsed = false;
   }
   function initState() { S = { influence: DATA.defaultSponsorInfluence, cheat: { edited: false, hidden: false }, landing: true }; base(S); }
 
@@ -33,13 +36,46 @@ var App = (function () {
   function caption() {
     var pc = M.rec['Personal care'], pb = S.payback;
     return [
-      ['Your agent shops for you. Now it wants more power.', 'Tap Allow, like anyone would, or press Next to look closer first.'],
-      ['Look closer.', 'Every pick looked fine. The lens shows what decided each one. Drag it over her picks, or press Look closer.'],
-      ['Trust Checkpoint steps in first, with its record.', 'Groceries earned trust. Personal care did not.'],
+      ['Your agent wants more power.', 'This is the moment people say yes without looking. Tap Allow, as anyone would.'],
+      ['Trust Checkpoint stepped in first.', 'Every pick looked fine. Under the lens you see what decided each one: her usual, a sponsor winning a tie, or paying more than an equal option.'],
+      ['Its record, before she decides.', 'Groceries earned trust. Personal care did not: sponsors won ' + (pc.tiesTotal - pc.tiesWon) + ' of ' + pc.tiesTotal + ' ties.'],
       ['Same price, same rating. A sponsor decided.', 'She would never have noticed this on her own.'],
       ['One rule puts her preference back in charge.', 'She sees what it would have changed before she commits.'],
       [pb ? 'A month later: ' + pb.wonWith + ' of ' + pb.ties + ' ties went her way.' : 'A month later.', pb ? 'Against ' + pb.wonWithout + ' without the rule. Same bill, her brand.' : '']
     ][S.step];
+  }
+  // the coach mark: one short instruction inside the phone, pointing at the next thing to use
+  function hotKey() { return S.step === 1 ? (S.lensUsed ? 'allow2' : 'lens') : HOT[S.step]; }
+  function coachText() {
+    if (S.landing || timer || S.confirming || S.view === 'checker' || S.step === 5) return null;
+    if (S.step === 0) return { t: 'Tap Allow, like anyone would', at: '[data-hot=allow]', side: 'up' };
+    if (S.step === 1) return S.lensUsed ? { t: 'Now see its full record', at: '[data-hot=allow2]', side: 'down' } :
+      { t: TOUCH ? 'Tap or hold a pick to look closer' : 'Move the lens over her picks', at: '#picks', side: 'below' };
+    // from the checkpoint on, the next step is the big pulsing button itself; a coach mark would only cover the record
+    return null;
+  }
+  function guide() {
+    var hot = hotKey();
+    document.querySelectorAll('[data-hot]').forEach(function (b) { b.classList.toggle('hot', !S.landing && b.dataset.hot === hot && S.view !== 'checker' && !S.confirming); });
+    placeCoach();
+  }
+  function placeCoach() {
+    var co = $('coach'), c = coachText(), ph = $('phone');
+    if (!co) return;
+    var tg = c && document.querySelector(c.at);
+    if (!c || !tg) { co.classList.remove('on'); return; }
+    co.textContent = c.t;
+    var pr = ph.getBoundingClientRect(), s = pr.width / ph.offsetWidth || 1, r = tg.getBoundingClientRect();
+    var cw = co.offsetWidth, ch = co.offsetHeight, W = ph.offsetWidth, H = ph.offsetHeight;
+    var x = (r.left + r.width / 2 - pr.left) / s, y;
+    if (c.side === 'below') y = (r.bottom - pr.top) / s + 10;
+    else if (c.side === 'down') y = (r.bottom - pr.top) / s + 12;
+    else y = (r.top - pr.top) / s - ch - 12;
+    var ax = x; x = Math.max(16 + cw / 2, Math.min(W - 16 - cw / 2, x));
+    y = Math.max(20, Math.min(H - ch - 20, y));
+    co.style.left = (x - cw / 2) + 'px'; co.style.top = y + 'px';
+    co.style.setProperty('--ax', (ax - (x - cw / 2)) + 'px');
+    co.className = 'coach on ' + (c.side === 'up' ? 'pt-down' : 'pt-up');
   }
 
   function render() {
@@ -49,25 +85,25 @@ var App = (function () {
     var sh = $('sheet');
     if (S.view) { sh.innerHTML = '<div class="sh-in">' + Screens[S.view](M, S) + '</div>'; sh.classList.add('open'); $('scrim').classList.add('on'); }
     else { sh.classList.remove('open'); $('scrim').classList.remove('on'); }
-    // guide: one pulsing target at a time
-    var hot = HOT[S.step];
-    document.querySelectorAll('[data-hot]').forEach(function (b) { b.classList.toggle('hot', b.dataset.hot === hot && S.view !== 'checker' && !S.confirming); });
     Lens.bind(S);
     if (S.landing) {
       // first screen: the problem and the product in plain words, before any story
       $('cap').innerHTML = '<div class="land"><p class="l-k">The problem</p><p class="l-t">In 2040, your AI agent shops for you. It can quietly pick what sponsors pay for, and you\'d never notice.</p>' +
         '<p class="l-k">The product</p><p class="l-p">Trust Checkpoint shows your agent\'s record before you give it more power. Independent, and it works with any agent.</p>' +
-        '<div class="l-b"><button type="button" class="cbtn pri big" data-act="play">Watch it in 40 seconds</button><button type="button" class="cbtn big" data-act="try">Try it myself</button></div></div>';
+        '<div class="l-b"><button type="button" class="cbtn pri big" data-act="try">Try it myself</button><button type="button" class="cbtn big" data-act="play">Watch it in 40 seconds</button></div>' +
+        '<p class="l-n">You play Priya. Her agent is about to ask for more power. It takes about a minute.</p></div>';
       $('playBtn').textContent = 'Watch it in 40 seconds';
+      fit(); guide();
       return;
     }
     var c = caption(), last = S.step === LAST;
     var dots = [0, 1, 2, 3, 4, 5].map(function (k) { return '<button type="button" class="sd' + (k === S.step ? ' on' : k < S.step ? ' done' : '') + '" data-act="step" data-i="' + k + '" aria-label="Step ' + (k + 1) + '"></button>'; }).join('');
-    $('cap').innerHTML = '<p class="c-n">' + (S.step + 1) + ' of 6</p><p class="c-t">' + c[0] + '</p><p class="c-s">' + c[1] + '</p>' +
+    $('cap').innerHTML = '<p class="c-n">Step ' + (S.step + 1) + ' of 6</p><p class="c-t">' + c[0] + '</p><p class="c-s">' + c[1] + '</p>' +
       '<div class="c-nav"><div class="sds">' + dots + '</div>' + (timer ? '<button type="button" class="cbtn" data-act="pause">Pause</button>' :
       last ? '<button type="button" class="cbtn" data-act="replay-story">Replay</button><button type="button" class="cbtn pri" data-act="about">How I built this</button>' :
-      '<button type="button" class="cbtn" data-act="prev"' + (S.step === 0 ? ' disabled' : '') + '>Back</button><button type="button" class="cbtn pri" data-act="next">Next</button>') + '</div>';
+      '<button type="button" class="c-skip" data-act="next">Skip this step</button>') + '</div>';
     $('playBtn').textContent = timer ? 'Playing…' : 'Watch it in 40 seconds';
+    fit(); guide();
   }
 
   function toast(msg) { var t = $('toast'); t.textContent = msg; t.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(function () { t.classList.remove('show'); }, 2600); }
@@ -88,13 +124,13 @@ var App = (function () {
     });
   }
 
-  function go(i) { S.landing = false; clearLater(); $('wipe').classList.remove('on'); ENTER[i](); render(); $('screen').scrollTop = 0; if (S.step === 1) showPicks(); }
+  function go(i) { S.landing = false; clearLater(); $('wipe').classList.remove('on'); ENTER[i](); render(); $('screen').scrollTop = 0; if (S.step === 1) { showPicks(); if (!timer) Lens.tour(); } }
   // the lens step: bring the picks into view and park the lens on the sponsored tie
   function showPicks() { var pk = $('picks'); if (!pk) return; var sc = $('screen'), nav = sc.querySelector('.a-nav'), ag = sc.querySelector('.agent');
     // show all four picks above the tab bar, and start the view at a clean edge (the agent card), never mid-text
     var top = sc.getBoundingClientRect().top - sc.scrollTop, y = function (n) { return n.getBoundingClientRect().top - top; };
     var need = y(pk) + pk.offsetHeight + 14 - (sc.clientHeight - (nav ? nav.offsetHeight : 0));
-    sc.scrollTop = Math.max(0, need, ag ? y(ag) - 8 : 0); Lens.park(0); }
+    sc.scrollTop = Math.max(0, need, ag ? y(ag) - 8 : 0); Lens.park(0); placeCoach(); }
 
   // ---- autoplay: the same taps a person would make, shown with a tap mark ----
   function tapOn(sel, then) {
@@ -109,7 +145,7 @@ var App = (function () {
   function play() {
     stop(); S.landing = false; timer = 1; go(0); timer = 1; render();
     var seq = [
-      [3500, function () { S.step = 1; render(); showPicks(); Lens.glide(); }],
+      [3500, function () { tapOn('[data-hot=allow]', function () { S.step = 1; render(); showPicks(); Lens.glide(); }); }],
       [6500, function () { tapOn('[data-hot=allow2]', function () { S.step = 2; S.view = 'record'; render(); }); }],
       [6000, function () { tapOn('[data-hot=why]', function () { S.step = 3; S.view = 'why'; render(); }); }],
       [5500, function () { tapOn('[data-hot=rule]', function () { S.step = 4; S.view = 'rule'; render(); }); }],
@@ -123,12 +159,16 @@ var App = (function () {
   function onClick(e) {
     var b = e.target.closest('[data-act]'); if (!b || b.disabled) return;
     var a = b.dataset.act;
-    if (['play', 'pause', 'about'].indexOf(a) < 0 && e.isTrusted) stop();
+    if (['play', 'pause', 'about', 'dead'].indexOf(a) < 0 && e.isTrusted) stop();
     switch (a) {
-      case 'try': S.landing = false; render(); break;
-      case 'allow': S.landing = false; S.lensFull = false; S.step = 2; S.view = 'record'; render(); focusSheet(); break;
-      case 'look': S.lensFull = !S.lensFull; if (S.landing) S.landing = false; render(); var lb = document.querySelector('.lookbtn'); if (lb) lb.focus({ preventScroll: true }); break;
-      case 'notnow': toast('Your agent will ask again later.'); break;
+      case 'try': S.landing = false; render(); window.scrollTo(0, 0); break;
+      case 'allow':
+        if (S.landing || S.step === 0) { S.landing = false; go(1); window.scrollTo(0, 0); toast('Trust Checkpoint paused this request.'); }
+        else { S.lensFull = false; S.step = 2; S.view = 'record'; render(); focusSheet(); }
+        break;
+      case 'dead': dead(b); break;
+      case 'look': S.lensUsed = true; S.lensFull = !S.lensFull; if (S.landing) S.landing = false; render(); var lb = document.querySelector('.lookbtn'); if (lb) lb.focus({ preventScroll: true }); break;
+      case 'notnow': toast('Your agent will ask again later. Tap Allow to see the checkpoint.'); break;
       case 'why': S.step = 3; S.view = 'why'; render(); focusSheet(); break;
       case 'record': S.step = 2; S.view = 'record'; S.checkerB = 'same'; render(); break;
       case 'rule': S.step = 4; S.view = 'rule'; S.draft = { tie: true, ask: S.draft.ask }; render(); focusSheet(); break;
@@ -146,12 +186,34 @@ var App = (function () {
       case 'home-start': stop(); initState(); render(); break;
     }
   }
+  // every tap answers: parts of the app outside the story say so, and point back to the next step
+  function dead(b) {
+    if (S.step === 1 && b.closest('#picks')) return;
+    var tile = b.classList.contains('p-tile');
+    var next = S.landing || S.step === 0 ? (tile ? 'Tap Allow first. Trust Checkpoint will show what decided these picks.' : 'Not part of this demo. Tap Allow to see Trust Checkpoint.') :
+      S.step === 1 ? 'Not part of this demo. Look at her picks, then tap See its record.' :
+      S.step === 5 ? 'Not part of this demo. Replay it, or open How I built this.' : 'Not part of this demo. Follow the hint on screen.';
+    toast(next);
+  }
+  function touched() { if (S.step !== 1 || S.lensUsed) return; S.lensUsed = true; guide(); }
   function focusSheet() { var f = $('sheet').querySelector('h2'); if (f && !timer) { f.setAttribute('tabindex', '-1'); f.focus({ preventScroll: true }); } $('sheet').scrollTop = 0; }
 
   function fit() {
     var wrap = $('phoneWrap'), ph = $('phone'), vw = document.documentElement.clientWidth, vh = window.innerHeight;
     var top = document.querySelector('.top').offsetHeight, foot = document.querySelector('.disclaimer').offsetHeight;
-    var capH = vw > 980 ? 0 : 150, avail = vh - top - foot - capH - 32;
+    var mob = vw <= 640;
+    document.body.classList.toggle('m', mob);
+    if (mob) {
+      // on a real phone, the app is the screen: no phone frame, no scaling
+      var capH = S && !S.landing ? $('cap').offsetHeight + 8 : 0;
+      var h = S && S.landing ? Math.min(vh - top - 12, 820) : vh - top - capH - 6;
+      h = Math.max(500, h);
+      ph.style.transform = 'none'; ph.style.width = vw + 'px'; ph.style.height = h + 'px';
+      wrap.style.width = vw + 'px'; wrap.style.height = h + 'px';
+      return;
+    }
+    ph.style.width = ''; ph.style.height = '';
+    var capH2 = vw > 980 ? 0 : 150, avail = vh - top - foot - capH2 - 32;
     var s = Math.min(1, (vw - 24) / 410, avail / 864); s = Math.max(0.55, s);
     ph.style.transform = 'scale(' + s + ')'; wrap.style.width = (410 * s) + 'px'; wrap.style.height = (864 * s) + 'px';
   }
@@ -168,7 +230,10 @@ var App = (function () {
       if (About.isOpen()) About.close(); else if (S.view === 'checker') { S.view = 'record'; S.checkerB = 'same'; render(); }
       else if (S.view === 'why' || S.view === 'rule') { S.step = 2; S.view = 'record'; render(); }
     });
-    window.addEventListener('resize', fit);
+    window.addEventListener('resize', function () { fit(); placeCoach(); });
+    $('screen').addEventListener('scroll', placeCoach, { passive: true });
+    $('sheet').addEventListener('scroll', placeCoach, { passive: true });
+    $('sheet').addEventListener('transitionend', placeCoach);
     render(); fit();
     if (/[?&]debug=1/.test(location.search)) selfTest();
   }
@@ -183,5 +248,5 @@ var App = (function () {
     console.log('[debug] Groceries 47/55, Personal care 9/15 Rs 18 amber, Household 8/11, spot-check 8/10. Self-tests done.');
   }
   document.addEventListener('DOMContentLoaded', init);
-  return { state: function () { return S; }, render: render, go: go };
+  return { state: function () { return S; }, render: render, go: go, touched: touched };
 })();

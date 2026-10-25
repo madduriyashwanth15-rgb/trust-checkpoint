@@ -321,3 +321,44 @@ body.landing .top .tplay{visibility:hidden}
 .picks:not(.full) .x-img{display:none}
 .picks:not(.full) .x-tile b{white-space:normal;max-width:122px;line-height:1.2}
 .picks:not(.full) .x-tag{max-width:124px}
+
+/* ---------- v8: recruiter-first ---------- */
+/* the coach mark: one instruction inside the phone, pointing at the next thing to use */
+.coach{position:absolute;left:0;top:0;z-index:15;background:#14204A;color:#fff;font-weight:600;font-size:13.5px;line-height:1.25;padding:9px 14px;border-radius:12px;max-width:300px;text-align:center;box-shadow:0 10px 24px -8px rgba(15,22,45,.55);opacity:0;transform:translateY(4px);transition:opacity .25s,transform .25s;pointer-events:none;--ax:50%}
+.coach.on{opacity:1;transform:none;animation:coachbob 2.4s ease-in-out .4s infinite}
+.coach::after{content:"";position:absolute;left:var(--ax);width:12px;height:12px;margin-left:-6px;background:#14204A;transform:rotate(45deg);border-radius:2px}
+.coach.pt-down::after{bottom:-5px}
+.coach.pt-up::after{top:-5px}
+@keyframes coachbob{0%,100%{transform:none}50%{transform:translateY(-3px)}}
+/* Trust Checkpoint pauses the request */
+.hold{margin-top:14px;background:#EEF2FF;border:1.5px solid #C7D2F5;border-radius:18px;padding:12px 14px;animation:fadeup .45s both}
+.hold-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:6px}
+.hold-st{font-size:12px;font-weight:700;color:#B26A00;background:#FFF3D6;border-radius:999px;padding:3px 10px}
+.hold-q{margin:0 0 6px;font-weight:700;font-size:14.5px;line-height:1.32}
+.hold-w{margin:0 0 10px;font-size:12px;color:var(--muted);line-height:1.35}
+.hold .btn{min-height:42px;padding:9px 14px}
+/* caption: no Back/Next, only a quiet skip */
+.c-skip{background:none;border:0;color:var(--muted);font-size:13.5px;text-decoration:underline;text-underline-offset:3px;padding:8px 2px;min-height:40px}
+.c-skip:hover{color:var(--ink)}
+.l-n{margin:16px 0 0;font-size:14px;color:var(--muted);font-family:Lexend,var(--display)}
+[data-act=dead]{cursor:default}
+/* on a real phone the app is the screen: no frame, no scaling */
+body.m .stage{padding:0;gap:6px}
+body.m .phone{border-radius:0;padding:0;background:var(--app-bg);box-shadow:none}
+body.m .phone::before{inset:0;border-radius:0}
+body.m .island,body.m .statusbar{display:none}
+body.m .screen{left:0;right:0;top:0;bottom:0;border-radius:0}
+body.m .scrim,body.m .wipe{inset:0;border-radius:0}
+body.m .sheet{left:0;right:0;bottom:0;border-radius:22px 22px 0 0}
+body.m .toast{top:12px}
+body.m .a-top{padding-top:14px}
+body.m .top{flex-wrap:nowrap}
+body.m:not(.landing) .tplay{display:none}
+body.m:not(.landing) .cap{order:-1;padding:2px 16px 0;max-width:none}
+body.m:not(.landing) .c-s{display:none}
+body.m:not(.landing) .c-n{font-size:12px}
+body.m:not(.landing) .c-t{font-size:18px;margin:2px 0 2px;line-height:1.2}
+body.m:not(.landing) .sds{width:auto;margin:0;flex:1}
+body.m:not(.landing) .c-nav{flex-wrap:nowrap;gap:4px}
+body.m:not(.landing) .c-nav .cbtn{min-height:36px;padding:6px 12px;font-size:13px}
+body.m.landing .cap{padding:0 16px}

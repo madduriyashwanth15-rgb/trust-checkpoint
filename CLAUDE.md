@@ -15,9 +15,9 @@ A working, verified prototype already exists in this folder. Your job is to IMPR
 - js/screens.js: the app inside the phone and the Trust Checkpoint sheet
 - js/lens.js: the magnifier lens over the agent's picks
 - js/about.js: "How I built this"
-- js/app.js: state, steps and events. The story has 6 steps: ask, look closer, checkpoint, why, rule, a month later
+- js/app.js: state, steps and events. The story has 6 steps: ask, look closer, checkpoint, why, rule, a month later. The app drives it, not Back/Next: Allow is intercepted by a "Paused" Trust Checkpoint card with the lens, a coach mark inside the phone points at the next action, and dead taps show a message. On phones under 640px wide the app fills the screen with no phone frame. "Try it myself" is the main button
 - fonts/: Lexend and Outfit, bundled locally
-- tools/check.js: Playwright check list (dev only)
+- tools/check.js: Playwright check list, 81 checks (dev only)
 
 ## Hard rules
 1. NEVER edit data.js or logic.js, and never add, remove or reorder calls to Logic.simulateAgent or the random generator. The two-pager PDF quotes their output.

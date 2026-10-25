@@ -42,19 +42,35 @@ async function run(name) {
   ok('First screen states the problem', c.includes("In 2040, your AI agent shops for you. It can quietly pick what sponsors pay for, and you'd never notice."));
   ok('First screen states the product', c.includes("Trust Checkpoint shows your agent's record before you give it more power."));
   ok('First screen has Watch and Try', c.includes('Watch it in 40 seconds') && c.includes('Try it myself'));
+  ok('Try is the main button, Watch is secondary', (await pg.innerText('#cap .cbtn.pri')) === 'Try it myself');
+  ok('First screen says who you play', c.includes('You play Priya.'));
   ok('First screen unchanged: no lens or Look closer yet', !(await pg.$('.lookbtn')) && !(await pg.$('.lens.on')));
   ok('Link preview tags present', (await pg.$('meta[property="og:image"]')) && (await pg.$('meta[property="og:title"]')));
   ok('Disclaimer says independent and not affiliated', (await pg.innerText('.disclaimer')).includes('independent product, not affiliated'));
   await shot('01-first-screen');
 
-  await pg.click('#cap [data-act=try]'); await wait(300);
-  ok('Try starts at step 1 of 6', (await cap()).includes('1 of 6'));
+  await pg.click('#cap [data-act=try]'); await wait(400);
+  ok('Try starts at step 1 of 6', (await cap()).includes('Step 1 of 6'));
+  ok('No Back or Next buttons: the app drives the story', !(await pg.$('#cap [data-act=prev]')) && !/\bNext\b|\bBack\b/.test(await cap()));
+  ok('Coach mark inside the phone: Tap Allow', await pg.evaluate(() => { const c = document.getElementById('coach'); return c.classList.contains('on') && c.textContent === 'Tap Allow, like anyone would'; }));
+  await pg.click('#screen .a-nav span >> nth=1'); await wait(200);
+  ok('Dead tap answers (Categories): not part of this demo, tap Allow', (await pg.innerText('#toast')).includes('Not part of this demo. Tap Allow'));
+  await pg.click('#screen .pk-face .p-tile >> nth=0'); await wait(200);
+  ok('Tapping a pick before Allow teases the checkpoint', (await pg.innerText('#toast')).includes('Trust Checkpoint will show what decided these picks'));
   ok('The agent asks: 120 choices, limit to ₹15,000', (await screen()).includes('120 choices') && (await screen()).includes('raise my monthly limit to ₹15,000'));
   await pg.click('#screen [data-act=notnow]'); await wait(200);
   ok('Not now keeps the limit', (await pg.innerText('#toast')).includes('ask again later'));
 
+  await pg.click('#screen [data-act=allow]'); await wait(3200);
+  ok('Allow is intercepted: step 2 of 6, Trust Checkpoint paused it', (await cap()).includes('2 of 6') && (await screen()).includes('Paused') && (await pg.innerText('#toast')).includes('Trust Checkpoint paused this request'));
+  ok('Paused card says where it runs: bank or payment app, not the agent', (await screen()).includes('Runs through your bank or payment app, not your agent, so the agent cannot skip it.'));
+  ok('After Allow the lens sweeps and rests on the sponsored tie', await pg.evaluate(() => { const c = document.querySelector('.x-tile.cur'); return !!c && /Deodorant/.test(c.dataset.item) && +document.getElementById('xray').dataset.lr > 0; }));
+  ok('Coach: move the lens over her picks', (await pg.innerText('#coach')) === 'Move the lens over her picks');
+  { const b1 = await pg.locator('.pk-face .p-tile').nth(1).boundingBox(); await pg.mouse.move(b1.x + 20, b1.y + 20); await pg.mouse.move(b1.x + b1.width / 2, b1.y + b1.height / 2, { steps: 3 }); await wait(400); }
+  ok('Using the lens moves the coach to See its record', (await pg.innerText('#coach')) === 'Now see its full record' && await pg.evaluate(() => document.querySelector('[data-hot=allow2]').classList.contains('hot')));
+  await shot('02-paused-lens');
   await pg.click('#screen [data-act=allow]'); await wait(900);
-  ok('Allow on the ask opens the checkpoint directly (3 of 6)', (await cap()).includes('3 of 6'));
+  ok('See its record opens the checkpoint (3 of 6), coach steps aside', (await cap()).includes('3 of 6') && !(await pg.evaluate(() => document.getElementById('coach').classList.contains('on'))));
   c = await sheet();
   ok('Card title matches PDF', c.includes('Before you raise the limit to ₹15,000'));
   ok('Badge: Default checker, rules public', c.includes('Default checker · rules public'));
@@ -107,6 +123,7 @@ async function run(name) {
 
   await pg.click('#cap [data-act=about]'); await wait(500);
   let a = await pg.innerText('#about');
+  ok('How I built this: before/after read from the logic (9 of 15, then 4 of 4), even when opened at the end', a.includes('Here 9 of 15 in personal care before the rule, 4 of 4 the month after.'));
   ok('How I built this: thinking, independence, shipping', a.includes('How I shipped it') && a.includes('North star') && a.includes('Independent'));
   await pg.click('#about [data-act=tamper]'); await wait(300);
   ok('Tamper test caught (25 of 26)', (await pg.innerText('#tamperOut')).includes('Tamper caught: 25 of 26'));
@@ -115,9 +132,9 @@ async function run(name) {
   ok('Escape closes How I built this', await pg.evaluate(() => document.getElementById('about').hidden));
 
   // the lens: step 2, look closer at the picks that looked fine
-  await pg.click('#cap [data-act=step][data-i="1"]'); await wait(900);
+  await pg.click('#cap [data-act=step][data-i="1"]'); await wait(3200);
   c = await cap();
-  ok('Lens step: 2 of 6, Look closer.', c.includes('2 of 6') && c.includes('Look closer.') && c.includes('Every pick looked fine. The lens shows what decided each one.'));
+  ok('Lens step: 2 of 6, Trust Checkpoint stepped in first', c.includes('2 of 6') && c.includes('Trust Checkpoint stepped in first.') && c.includes('Every pick looked fine.'));
   const L = await pg.evaluate(() => {
     const M = Model.compute(App.state()), set = Screens.lensSet(M), kinds = set.map(Model.classify);
     const over = set.find(x => /^overpaid/.test(Model.classify(x)));
@@ -169,22 +186,28 @@ async function run(name) {
   await mob.goto(URL); await mob.waitForTimeout(800);
   ok('Mobile: no horizontal scroll', (await mob.evaluate('document.documentElement.scrollWidth')) <= 390);
   ok('Mobile: problem text above the phone', await mob.evaluate(() => document.getElementById('cap').getBoundingClientRect().top < document.getElementById('phoneWrap').getBoundingClientRect().top));
-  await mob.click('#cap [data-act=try]'); await mob.click('#screen [data-act=allow]'); await mob.waitForTimeout(900);
+  await mob.click('#cap [data-act=try]'); await mob.waitForTimeout(400);
+  ok('Mobile: the app fills the screen, no phone frame', await mob.evaluate(() => document.body.classList.contains('m') && Math.round(document.getElementById('phone').getBoundingClientRect().width) === 390 && getComputedStyle(document.querySelector('.statusbar')).display === 'none'));
+  ok('Mobile: step title sits above the app, in view', await mob.evaluate(() => { const c = document.getElementById('cap').getBoundingClientRect(), p = document.getElementById('phoneWrap').getBoundingClientRect(); return c.bottom <= p.top + 1 && c.top >= 0 && c.bottom < 200; }));
+  ok('Mobile: Allow is visible without scrolling', await mob.evaluate(() => { const r = document.querySelector('[data-hot=allow]').getBoundingClientRect(); return r.top > 0 && r.bottom < innerHeight; }));
+  await mob.click('#screen [data-act=allow]'); await mob.waitForTimeout(900); await mob.click('#screen [data-act=allow]'); await mob.waitForTimeout(900);
   ok('Mobile: checkpoint fits', (await mob.evaluate('document.documentElement.scrollWidth')) <= 390 && (await mob.innerText('#sheet')).includes('Before you raise the limit'));
   await mob.screenshot({ path: path.join(SHOTS, name + '-07-mobile.png') });
   // phone: press and hold to look through the lens
   const tctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true, isMobile: true });
   const tp = await tctx.newPage(); tp.on('pageerror', e => errors.push(String(e)));
   await tp.goto(URL); await tp.waitForTimeout(700);
-  await tp.click('#cap [data-act=try]'); await tp.click('#cap [data-act=next]'); await tp.waitForTimeout(900);
+  await tp.click('#cap [data-act=try]'); await tp.click('#cap [data-act=next]'); await tp.waitForTimeout(3200);
   ok('Phone: lens step fits, no horizontal scroll', (await tp.evaluate('document.documentElement.scrollWidth')) <= 390 && (await tp.innerText('#cap')).includes('2 of 6'));
   const tb = await tp.locator('.pk-face .p-tile').nth(3).boundingBox();
   const cdp = await tctx.newCDPSession(tp), pt = { x: tb.x + tb.width / 2, y: tb.y + tb.height / 2 };
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [pt] }); await tp.waitForTimeout(60);
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await tp.waitForTimeout(300);
-  ok('Phone: a quick tap does not move the lens', await tp.evaluate(() => (document.querySelector('.x-tile.cur') || {}).dataset.i === '0'));
+  ok('Phone: a quick tap looks at that pick', await tp.evaluate(() => (document.querySelector('.x-tile.cur') || {}).dataset.i === '3'));
+  ok('Phone: coach says tap or hold, then moves to See its record', (await tp.innerText('#coach')) === 'Now see its full record');
+  { const t1 = await tp.locator('.pk-face .p-tile').nth(1).boundingBox(); pt.x = t1.x + t1.width / 2; pt.y = t1.y + t1.height / 2; }
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [pt] }); await tp.waitForTimeout(450);
-  ok('Phone: press and hold moves the lens to the held pick', await tp.evaluate(() => (document.querySelector('.x-tile.cur') || {}).dataset.i === '3' && +document.getElementById('xray').dataset.lr > 0));
+  ok('Phone: press and hold moves the lens to the held pick', await tp.evaluate(() => (document.querySelector('.x-tile.cur') || {}).dataset.i === '1' && +document.getElementById('xray').dataset.lr > 0));
   await cdp.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] }); await tp.waitForTimeout(200);
   await tp.screenshot({ path: path.join(SHOTS, name + '-08-phone-lens.png') });
   // reduced motion: no shimmer, no glide animation
