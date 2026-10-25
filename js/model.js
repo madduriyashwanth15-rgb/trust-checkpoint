@@ -94,7 +94,7 @@ var Model = (function () {
 
     return { p: p, rec: rec, spot: spot, gold: gold, ledger: ledger, lock: lock, missing: missing, hiddenRec: hiddenRec,
       verdicts: verdicts, tieRate: tiesT ? tiesW / tiesT : 0, tiesTotal: tiesT, tiesWon: tiesW, avoidable: avoid,
-      areas: del.length + (S.electronics ? 1 : 0), decisions: p.length + gold.chances,
+      areas: del.length + (S.electronics ? 1 : 0), decisions: p.length,
       monthCount: month.length, weekCount: week.length, weekSpend: week.reduce(function (a, x) { return a + x.chosen.total; }, 0),
       lensPicks: lensPicks };
   }

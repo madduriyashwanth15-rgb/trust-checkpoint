@@ -9,7 +9,7 @@ var App = (function () {
 
   function base(s) {
     s.step = 0; s.view = null; s.now = DATA.historyWeeks; s.limit = DATA.moneyAgent.monthlyLimit; s.ruleFrom = null; s.askAbove = null;
-    s.raised = false; s.payback = null; s.draft = { tie: true, ask: null }; s.confirming = false; s.checkerB = 'same'; s.ended = false; s.lensFull = false; s.lensUsed = false;
+    s.raised = false; s.payback = null; s.draft = { tie: true, ask: null }; s.confirming = false; s.checkerB = 'same'; s.ended = false; s.lensFull = false; s.lensUsed = false; s.held = false;
   }
   function initState() { S = { influence: DATA.defaultSponsorInfluence, cheat: { edited: false, hidden: false }, landing: true }; base(S); }
 
@@ -38,10 +38,10 @@ var App = (function () {
     return [
       ['Your agent wants more power.', 'This is the moment people say yes without looking. Tap Allow, as anyone would.'],
       ['Trust Checkpoint stepped in first.', 'Every pick looked fine. Under the lens you see what decided each one: her usual, a sponsor winning a tie, or paying more than an equal option.'],
-      ['Its record, before she decides.', 'Groceries earned trust. Personal care did not: sponsors won ' + (pc.tiesTotal - pc.tiesWon) + ' of ' + pc.tiesTotal + ' ties.'],
+      ['Its record, before she decides.', 'Groceries and household earned trust. Personal care needs a closer look: sponsors won ' + (pc.tiesTotal - pc.tiesWon) + ' of ' + pc.tiesTotal + ' ties.'],
       ['Same price, same rating. A sponsor decided.', 'She would never have noticed this on her own.'],
       ['One rule puts her preference back in charge.', 'She sees what it would have changed before she commits.'],
-      [pb ? 'A month later: ' + pb.wonWith + ' of ' + pb.ties + ' ties went her way.' : 'A month later.', pb ? 'Against ' + pb.wonWithout + ' without the rule. Same bill, her brand.' : '']
+      [pb ? 'A month later: ' + pb.wonWith + ' of ' + pb.ties + ' ties went her way.' : 'A month later.', pb ? (S.ruleFrom === null ? 'No rule was set, so nothing changed.' : 'The same month replayed without the rule gives ' + pb.wonWithout + '. Same bill, her brand.') : '']
     ][S.step];
   }
   // the coach mark: one short instruction inside the phone, pointing at the next thing to use
@@ -89,14 +89,16 @@ var App = (function () {
     if (S.landing) {
       // first screen: the problem and the product in plain words, before any story
       $('cap').innerHTML = '<div class="land"><p class="l-k">The problem</p><p class="l-t">In 2040, your AI agent shops for you. It can quietly pick what sponsors pay for, and you\'d never notice.</p>' +
-        '<p class="l-k">The product</p><p class="l-p">Trust Checkpoint shows your agent\'s record before you give it more power. Independent, and it works with any agent.</p>' +
+        '<p class="l-k">The product</p><p class="l-p">Trust Checkpoint shows your agent\'s record before you give it more power. Your bank must check with it first, so the agent cannot skip it.</p>' +
         '<div class="l-b"><button type="button" class="cbtn pri big" data-act="try">Try it myself</button><button type="button" class="cbtn big" data-act="play">Watch it in 40 seconds</button></div>' +
         '<p class="l-n">You play Priya. Her agent is about to ask for more power. It takes about a minute.</p></div>';
       $('playBtn').textContent = 'Watch it in 40 seconds';
       fit(); guide();
       return;
     }
-    var c = caption(), last = S.step === LAST;
+    var c = caption(), last = S.step === LAST || S.held;
+    if (S.held) c = ['She said not yet.', 'The limit stays ' + inr(S.limit) + '. Nothing changes until the agent asks again with a fresh record.'];
+    else if (S.step === 4 && S.confirming && !S.draft.tie) c = ['She raised it without a rule.', 'The limit rises; ties keep going wherever the agent decides.'];
     var dots = [0, 1, 2, 3, 4, 5].map(function (k) { return '<button type="button" class="sd' + (k === S.step ? ' on' : k < S.step ? ' done' : '') + '" data-act="step" data-i="' + k + '" aria-label="Step ' + (k + 1) + '"></button>'; }).join('');
     $('cap').innerHTML = '<p class="c-n">Step ' + (S.step + 1) + ' of 6</p><p class="c-t">' + c[0] + '</p><p class="c-s">' + c[1] + '</p>' +
       '<div class="c-nav"><div class="sds">' + dots + '</div>' + (timer ? '<button type="button" class="cbtn" data-act="pause">Pause</button>' :
@@ -174,7 +176,7 @@ var App = (function () {
       case 'rule': S.step = 4; S.view = 'rule'; S.draft = { tie: true, ask: S.draft.ask }; render(); focusSheet(); break;
       case 'rule-raise': confirmRaise(S.draft.tie, S.draft.ask); break;
       case 'raise-plain': S.draft = { tie: false, ask: null }; confirmRaise(false, null); break;
-      case 'notyet': toast('Limit stays ' + inr(S.limit) + '. Review any time.'); break;
+      case 'notyet': S.view = null; S.held = true; render(); toast('Limit stays ' + inr(S.limit) + '. Your agent can ask again later.'); break;
       case 'checker': S.view = 'checker'; S.checkerB = 'strict'; render(); break;
       case 'about': About.open(); break;
       case 'play': play(); break;

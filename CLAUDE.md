@@ -12,16 +12,16 @@ A working, verified prototype already exists in this folder. Your job is to IMPR
 - js/util.js: shared helpers
 - js/model.js: derives everything the UI shows from data, Logic and Lock
 - js/art.js: illustrated product tiles (inline SVG)
-- js/screens.js: the app inside the phone and the Trust Checkpoint sheet
+- js/screens.js: the app inside the phone and the Trust Checkpoint sheet. The checkpoint card shows Groceries, Personal care and Household (no Gold row, no spot-check score). Its "How verdicts are set" lists the tie, usual brand, avoidable spend and all four verdicts (Earned, Check, Hold back, No verdict)
 - js/lens.js: the magnifier lens over the agent's picks
 - js/about.js: "How I built this"
-- js/app.js: state, steps and events. The story has 6 steps: ask, look closer, checkpoint, why, rule, a month later. The app drives it, not Back/Next: Allow is intercepted by a "Paused" Trust Checkpoint card with the lens, a coach mark inside the phone points at the next action, and dead taps show a message. On phones under 640px wide the app fills the screen with no phone frame. "Try it myself" is the main button
+- js/app.js: state, steps and events. The story has 6 steps: ask, look closer, checkpoint, why, rule, a month later. The app drives it, not Back/Next: Allow is intercepted by a "Paused" Trust Checkpoint card with the lens, a coach mark inside the phone points at the next action, and dead taps show a message. "Not yet" closes the card and ends the story. The rule is a condition of the new limit; one break drops it back to Rs 10,000. On phones under 640px wide the app fills the screen with no phone frame. "Try it myself" is the main button
 - fonts/: Lexend and Outfit, bundled locally
-- tools/check.js: Playwright check list, 81 checks (dev only)
+- tools/check.js: Playwright check list, 86 checks (dev only)
 
 ## Hard rules
 1. NEVER edit data.js or logic.js, and never add, remove or reorder calls to Logic.simulateAgent or the random generator. The two-pager PDF quotes their output.
-2. These numbers must appear exactly at default settings (sponsor influence 40%, no rules): Groceries 47 of 55 ties, Earned; Personal care 9 of 15 ties, overpaid Rs 18 a month, Check; Gold bought at your price 3 of 3 times; spot-check 8 of 10 passed (Simulated); Personal care 26 of 26 fingerprints match. After "Raise with a rule" + PIN + "Fast-forward 1 month": 4 of 4 personal-care ties (2 of 4 without the rule), Personal care 11 of 15, Earned. Electronics shows grey "Not enough evidence yet".
+2. These numbers must appear exactly at default settings (sponsor influence 40%, no rules): Groceries 47 of 55 ties, Earned; Personal care 9 of 15 ties, overpaid Rs 18 a month, Check; Household 8 of 11 ties; Personal care 26 of 26 fingerprints match. After "Raise with a rule" + PIN + "Fast-forward 1 month": 4 of 4 personal-care ties (2 of 4 without the rule), Personal care 11 of 15, Earned. Electronics shows grey "Not enough evidence yet".
 3. Never type a number into the UI by hand. Everything comes from Logic or Lock.
 4. Plain HTML, CSS and vanilla JS. No frameworks, no npm packages, no CDN links, no network calls. Must run offline by double-clicking index.html.
 5. No Flipkart or Super.money logos, wordmarks, icons or copied screens. Their names appear only in the caption above the phone and in the footer disclaimer, which must stay visible.

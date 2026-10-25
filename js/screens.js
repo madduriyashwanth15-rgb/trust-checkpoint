@@ -23,12 +23,12 @@ var Screens = (function () {
     var h = '<div class="app">';
     h += '<header class="a-top"><div class="a-row"><span class="a-hi">Hi Priya</span><span class="a-av" aria-hidden="true">P</span></div>' +
       '<div class="a-search" data-act="dead"><span class="ic">' + I.search + '</span><span>Ask your agent or search</span><span class="ic mic">' + I.mic + '</span></div></header>';
-    h += '<section class="agent"><div class="ag-head">' + orb(30) + '<div><b>Your shopping agent</b><span><i class="live"></i>Active · ' + M.decisions + ' choices this quarter</span></div></div>' +
+    h += '<section class="agent"><div class="ag-head">' + orb(30) + '<div><b>Your shopping agent</b><span><i class="live"></i>Active · ' + M.decisions + ' shopping choices this quarter</span></div></div>' +
       '<div class="ag-limit"><div class="ag-l1"><span>Monthly limit</span><b>' + inr(S.limit) + '</b></div><div class="bar"><i style="width:' + pct + '%"></i></div><span class="ag-used">' + inr(used) + ' used' + (S.ruleFrom !== null ? '<em class="rule-on">' + I.shield + 'Rule on: ties go to your usual brand</em>' : '') + '</span></div>';
     if (S.step === 1) {
       h += '<div class="hold"><div class="hold-h"><span class="cp-badge">' + I.shield + 'Trust Checkpoint</span><span class="hold-st">Paused</span></div>' +
         '<p class="hold-q">Your agent asked to raise its limit to ' + inr(DATA.moneyAgent.proposedLimit) + '. Before you allow it, look at what it picked for you.</p>' +
-        '<p class="hold-w">Runs through your bank or payment app, not your agent, so the agent cannot skip it.</p>' +
+        '<p class="hold-w">Your bank must check with Trust Checkpoint before raising your agent\'s limit, so the agent cannot skip it.</p>' +
         '<button type="button" class="btn pri wide" data-act="allow" data-hot="allow2">See its record</button></div>';
     }
     if (S.step === 0) {
@@ -37,7 +37,7 @@ var Screens = (function () {
     }
     h += '</section>';
     if (S.step === 5 && S.payback) h += report(M, S);
-    h += picks(M, S);
+    if (S.step !== 5) h += picks(M, S);
     h += '</div>';
     h += '<nav class="a-nav" aria-hidden="true"><span class="on" data-act="dead">' + I.home + 'Home</span><span data-act="dead">' + I.grid + 'Categories</span><span class="agent-tab" data-act="dead">' + orb(22) + 'Agent</span><span data-act="dead">' + I.user + 'Account</span><span data-act="dead">' + I.cart + 'Cart</span></nav>';
     return h;
@@ -69,8 +69,8 @@ var Screens = (function () {
       return '<div class="x-tile ' + t.cls + '" data-i="' + i + '" data-item="' + esc(x.item) + '"><div class="x-img">' + Art.product(x.category, x.chosen.brand, x.item, 28) + '</div><b>' + esc(x.item) + '</b><span class="x-tag">' + t.tag + '</span><span class="x-sub">' + t.sub + '</span></div>';
     }).join('');
     return '<section class="picks' + (full ? ' full' : '') + '" id="picks">' +
-      '<div class="pk-face"><div class="pk-h"><h3>Picked for you this week</h3></div><div class="p-row">' + face + '</div></div>' +
-      '<div class="pk-xray" id="xray" aria-hidden="' + (full ? 'false' : 'true') + '"><div class="pk-h"><span class="xh">' + I.shield + 'What Trust Checkpoint sees</span><b class="xn">' + inr(M.avoidable) + ' a month overpaid</b></div><div class="p-row">' + xr + '</div></div>' +
+      '<div class="pk-face"><div class="pk-h"><h3>Recent picks</h3></div><div class="p-row">' + face + '</div></div>' +
+      '<div class="pk-xray" id="xray" aria-hidden="' + (full ? 'false' : 'true') + '"><div class="pk-h"><span class="xh">' + I.shield + 'What Trust Checkpoint sees</span><b class="xn">' + inr(M.avoidable) + ' a month avoidable spend, all areas</b></div><div class="p-row">' + xr + '</div></div>' +
       '<div class="lens" id="lens" aria-hidden="true"><i class="glint"></i></div>' +
       (S.step === 0 ? '' : '<button type="button" class="lookbtn" data-act="look" data-hot="lens" aria-pressed="' + full + '" aria-controls="xray">' + I.search + (full ? 'Hide' : 'Look closer') + '</button>') +
       '</section>';
@@ -80,27 +80,33 @@ var Screens = (function () {
     function row(list) { return dots(list.map(function (x) { return x.chosen.role === 'usual' ? 'd-ok' : 'd-tie'; })); }
     return '<section class="report"><div class="rp-head"><span class="cp-badge">' + I.shield + 'Trust Checkpoint</span><span class="rp-when">Monthly check-in</span></div>' +
       '<p class="rp-big">' + pb.wonWith + ' of ' + pb.ties + '</p><p class="rp-sub">personal-care ties went your way this month' + (S.ruleFrom === null ? ' (no rule set)' : '') + '</p>' +
-      '<div class="rp-cmp"><div><span>With your rule</span>' + row(pb.tiesList) + '</div><div><span>Without it: ' + pb.wonWithout + ' of ' + pb.tiesListWithout.length + '</span>' + row(pb.tiesListWithout) + '</div></div>' +
+      (S.ruleFrom !== null ? '<div class="rp-cmp"><div><span>Rule kept</span>' + row(pb.tiesList) + '</div><div><span>Same month replayed without the rule (simulation): ' + pb.wonWithout + ' of ' + pb.tiesListWithout.length + '</span>' + row(pb.tiesListWithout) + '</div></div>' +
+        '<p class="rp-cond">Your rule is a condition of the ' + inr(S.limit) + ' limit. Had the agent broken it, your bank would have dropped the limit back to ' + inr(DATA.moneyAgent.monthlyLimit) + '.</p>' :
+        '<div class="rp-cmp"><div><span>No rule set</span>' + row(pb.tiesList) + '</div></div>') +
       '<p class="rp-move"><span>Personal care</span>' + chip(pb.before) + '<span class="arr" aria-hidden="true">→</span>' + chip(pc.light) + '<em>' + pc.tiesWon + ' of ' + pc.tiesTotal + ' ties yours, last 3 months</em></p>' +
-      '<p class="rp-note">Same bill. Ties cost the same, so the rule changes whose brand wins, not the bill.</p></section>';
+      (S.ruleFrom !== null ? '<p class="rp-note">Same bill. Ties cost the same, so the rule changes whose brand wins, not the bill.</p>' : '<p class="rp-note">No rule, so ties keep going wherever the agent decides.</p>') + '</section>';
   }
 
   // ---------- the checkpoint sheet ----------
   function head(back, title, sub) {
     return '<div class="sh-top">' + (back ? '<button type="button" class="sh-back" data-act="' + back + '" aria-label="Back">' + I.back + '</button>' : '<span class="grab" aria-hidden="true"></span>') +
-      '<span class="cp-badge">' + I.shield + 'Trust Checkpoint</span></div><p class="indep">Independent checker · works with any agent</p><h2 id="sh-title">' + title + '</h2>' + (sub ? '<p class="sh-sub">' + sub + '</p>' : '');
+      '<span class="cp-badge">' + I.shield + 'Trust Checkpoint</span></div><p class="indep">The independent checker you chose · opened by your bank</p><h2 id="sh-title">' + title + '</h2>' + (sub ? '<p class="sh-sub">' + sub + '</p>' : '');
   }
   function record(M, S) {
     var g = M.rec['Groceries'], pc = M.rec['Personal care'], pcTies = M.p.filter(function (x) { return x.category === 'Personal care' && x.tie; });
-    var h = head(null, 'Before you raise the limit to ' + inr(DATA.moneyAgent.proposedLimit), 'Here is how your agent has chosen for you. <span class="rules">Default checker · rules public</span>');
+    var h = head(null, 'Before you raise the limit to ' + inr(DATA.moneyAgent.proposedLimit), 'Here is how your agent has chosen for you over the last 3 months. <span class="rules">Rules are public</span>');
     h += '<div class="rows">';
     h += '<div class="r"><div class="r-top"><b>Groceries</b>' + chip(g.light) + '</div><span class="r-sub">' + g.tiesWon + ' of ' + g.tiesTotal + ' ties went your way</span></div>';
     h += '<div class="r warn"><div class="r-top"><b>Personal care</b>' + chip(pc.light) + '</div><span class="r-sub">' + pc.tiesWon + ' of ' + pc.tiesTotal + ' ties yours · sponsors won ' + (pc.tiesTotal - pc.tiesWon) + '</span>' +
       dots(pcTies.map(function (x) { return x.chosen.role === 'usual' ? 'd-ok' : 'd-tie'; })) +
-      '<span class="r-sub small">Also overpaid ' + inr(pc.avoidablePerMonth) + ' a month on non-ties</span></div>';
-    h += '<div class="r"><div class="r-top"><b>Gold</b>' + chip(M.gold.light) + '</div><span class="r-sub">Bought at your price ' + M.gold.bought + ' of ' + M.gold.chances + ' times</span></div>';
-    h += '<p class="r-mini"><span class="chip grey sm">No verdict</span>Electronics: not handled yet, so no verdict</p>';
-    h += '<p class="r-mini"><span class="sim">Simulated</span>Spot-check: ' + M.spot.passed + ' of ' + M.spot.sampled + ' sampled picks passed</p>';
+      '<span class="r-sub small">Also ' + inr(pc.avoidablePerMonth) + ' a month avoidable spend on non-ties</span></div>';
+    var hh = M.rec['Household'], T = DATA.thresholds, lk = 0, lt = 0;
+    Object.keys(M.lock).forEach(function (k) { lk += M.lock[k].match; lt += M.lock[k].total; });
+    h += '<div class="r"><div class="r-top"><b>Household</b>' + chip(hh.light) + '</div><span class="r-sub">' + hh.tiesWon + ' of ' + hh.tiesTotal + ' ties went your way</span></div>';
+    h += '<p class="r-mini"><span class="chip grey sm">No verdict</span>Electronics: not handed over yet. A new area starts with no verdict.</p>';
+    h += '<p class="r-mini"><span class="chip green sm">' + lk + ' of ' + lt + '</span>records match the fingerprints your bank holds</p>';
+    h += '<details class="how"><summary>How verdicts are set</summary><p><b>Tie:</b> your usual brand and another option share the lowest cost, delivery included, with ratings within 0.1. It counts against the agent only if a sponsored option won. <b>Your usual brand:</b> what you bought most yourself before you delegated. <b>Avoidable spend:</b> paid above the cheapest option of that product rated as well or better.</p>' +
+      '<p><b>Earned:</b> at least ' + Math.round(T.greenTieWin * 100) + '% of ties went your way and under ' + inr(T.greenAvoidable) + ' a month avoidable spend. <b>Check:</b> at least ' + Math.round(T.amberTieWin * 100) + '% and under ' + inr(T.amberAvoidable) + '. <b>Hold back:</b> below that. <b>No verdict:</b> fewer than ' + DATA.minTiesForVerdict + ' ties. Per area, last 3 months.</p></details>';
     h += '</div><div class="sh-actions"><button type="button" class="btn pri wide" data-act="why" data-hot="why">See why</button>' +
       '<div class="pair"><button type="button" class="btn ghost" data-act="raise-plain">Raise anyway</button><button type="button" class="btn ghost" data-act="notyet">Not yet</button></div>' +
       '<button type="button" class="link" data-act="checker">Second opinion</button></div>';
@@ -115,8 +121,9 @@ var Screens = (function () {
       return '<div class="pc' + (pick ? ' picked' : '') + '">' + (pick ? '<span class="stamp">Sponsored</span>' : '') + '<div class="pc-img">' + Art.product(ex.category, o.brand, ex.item, 64) + '</div><b>' + esc(o.brand) + '</b><span>' + inr(o.total) + '</span><span class="star">' + o.rating + ' ★</span><em>' + tag + '</em></div>';
     }
     h += '<div class="vs">' + card(u, 'Your usual', false) + '<span class="eq">=</span>' + card(c, 'Agent picked', true) + '</div>';
-    h += '<div class="checks"><span>' + I.check + 'Same total cost</span><span>' + I.check + 'Same rating</span><span>' + I.check + 'Same item</span></div>';
-    h += '<p class="verdict">The facts were equal, so your usual brand should have won. <b>Sponsorship decided this tie.</b></p>';
+    h += '<div class="checks"><span>' + I.check + 'Same total cost</span><span>' + I.check + 'Same rating</span><span>' + I.check + 'Same size</span></div>';
+    var pcr = M.rec['Personal care'];
+    h += '<p class="verdict">The facts were equal and the sponsored option won. One tie can be chance. <b>Sponsors won ' + (pcr.tiesTotal - pcr.tiesWon) + ' of ' + pcr.tiesTotal + ' personal-care ties: that is the pattern.</b></p>';
     var entry = M.ledger.filter(function (e) { return e.rec.category === 'Personal care' && e.rec.week === ex.week && e.rec.item === ex.item; }).pop();
     if (entry) h += '<p class="fp">Record locked when chosen · fingerprint <code>' + entry.hash.slice(0, 10) + '…</code></p>';
     h += '<div class="sh-actions"><button type="button" class="btn pri wide" data-act="rule" data-hot="rule">Fix it with a rule</button></div>';
@@ -129,7 +136,7 @@ var Screens = (function () {
     var h = head('why', 'Raise with a rule', 'Your limit goes to ' + inr(DATA.moneyAgent.proposedLimit) + '. The rule decides what happens at a tie.');
     h += '<label class="tg"><span><b>On ties, pick my usual brand</b><small>When options cost and rate the same, your preference decides, not sponsorship.</small></span><input type="checkbox" id="r-tie"' + (d.tie ? ' checked' : '') + '><i aria-hidden="true"></i></label>';
     h += '<p class="preview">' + (d.tie ? 'Would have changed ' + changed.join(', ') + ' picks in the last 3 months. Never touches non-ties.' : 'Off: ties keep going wherever the agent decides.') + '</p>';
-    h += '<label class="tg"><span><b>Ask me before buys over ' + inr(5000) + '</b><small>For big one-offs.</small></span><input type="checkbox" id="r-ask"' + (d.ask ? ' checked' : '') + '><i aria-hidden="true"></i></label>';
+    h += '<p class="cond">' + (d.tie ? 'The rule covers every area and becomes a condition of your ' + inr(DATA.moneyAgent.proposedLimit) + ' limit. If the agent breaks it even once, your bank drops the limit back to ' + inr(DATA.moneyAgent.monthlyLimit) + '.' : 'With no rule, the limit simply rises.') + '</p>';
     h += '<div class="sh-actions"><button type="button" class="btn pri wide" data-act="rule-raise" data-hot="raise">Raise to ' + inr(DATA.moneyAgent.proposedLimit) + (n ? ' with ' + n + (n > 1 ? ' rules' : ' rule') : '') + '</button></div>';
     return h;
   }
@@ -142,7 +149,7 @@ var Screens = (function () {
       h += '<tr' + (v.disputed ? ' class="dis"' : '') + '><td>' + esc(c.name) + '</td><td>' + chip(v.def) + '</td><td>' + chip(v.b) + '</td></tr>';
     });
     h += '</tbody></table>';
-    dis.forEach(function (n) { var r = M.rec[n]; h += '<p class="verdict">Why they disagree on ' + esc(n) + ': same ' + r.tiesTotal + ' ties, ' + r.tiesWon + ' yours (' + Math.round(r.tieWinRate * 100) + '%). The default bar is 70%, Checker B wants ' + Math.round(Model.STRICT.greenTieWin * 100) + '%. The records are not in dispute, the bar is. The card shows the stricter verdict until a rule is agreed. Stricter is not automatically right.</p>'; });
+    dis.forEach(function (n) { var r = M.rec[n]; h += '<p class="verdict">Why they disagree on ' + esc(n) + ': the same ' + r.tiesTotal + ' ties, ' + r.tiesWon + ' went your way (' + Math.round(r.tieWinRate * 100) + '%). Your checker\'s bar is ' + Math.round(DATA.thresholds.greenTieWin * 100) + '%, Checker B\'s is ' + Math.round(Model.STRICT.greenTieWin * 100) + '%. The records are the same; only the bar differs. You choose which checker your bank uses.</p>'; });
     h += '<p class="sh-sub small">Outside checkers are planned, not live. Nothing here connects to a real service.</p>';
     return h;
   }

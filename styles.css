@@ -355,10 +355,24 @@ body.m .a-top{padding-top:14px}
 body.m .top{flex-wrap:nowrap}
 body.m:not(.landing) .tplay{display:none}
 body.m:not(.landing) .cap{order:-1;padding:2px 16px 0;max-width:none}
-body.m:not(.landing) .c-s{display:none}
+body.m:not(.landing) .c-s{font-size:13px;margin:0 0 4px;line-height:1.4}
 body.m:not(.landing) .c-n{font-size:12px}
 body.m:not(.landing) .c-t{font-size:18px;margin:2px 0 2px;line-height:1.2}
 body.m:not(.landing) .sds{width:auto;margin:0;flex:1}
 body.m:not(.landing) .c-nav{flex-wrap:nowrap;gap:4px}
 body.m:not(.landing) .c-nav .cbtn{min-height:36px;padding:6px 12px;font-size:13px}
 body.m.landing .cap{padding:0 16px}
+
+/* ---------- v9: how it works, made explicit ---------- */
+.how{margin:10px 0 2px;font-size:12.5px;color:var(--muted);font-family:Lexend,var(--display)}
+.how summary{cursor:pointer;color:var(--cp);font-weight:600;font-size:13px;list-style:none;padding:4px 0}
+.how summary::-webkit-details-marker{display:none}
+.how summary::before{content:"+ "}
+.how[open] summary::before{content:"− "}
+.how p{margin:6px 0 0;line-height:1.45}
+.cond{margin:10px 0 4px;font-size:13px;line-height:1.45;background:var(--cp-tint);color:var(--cp);border-radius:12px;padding:10px 12px;font-family:Lexend,var(--display)}
+.rp-cond{margin:8px 0 0;font-size:12.5px;line-height:1.45;color:var(--cp);font-family:Lexend,var(--display)}
+.ab-how{margin:14px 0 6px}
+.ab-how ol{margin:6px 0 0;padding-left:20px;display:grid;gap:6px}
+.ab-how li{font-family:Lexend,var(--display);font-size:14px;line-height:1.55}
+.app{min-height:100%;box-sizing:border-box}

@@ -57,13 +57,13 @@ async function run(name) {
   ok('Dead tap answers (Categories): not part of this demo, tap Allow', (await pg.innerText('#toast')).includes('Not part of this demo. Tap Allow'));
   await pg.click('#screen .pk-face .p-tile >> nth=0'); await wait(200);
   ok('Tapping a pick before Allow teases the checkpoint', (await pg.innerText('#toast')).includes('Trust Checkpoint will show what decided these picks'));
-  ok('The agent asks: 120 choices, limit to ₹15,000', (await screen()).includes('120 choices') && (await screen()).includes('raise my monthly limit to ₹15,000'));
+  ok('The agent asks: 117 shopping choices, limit to ₹15,000', (await screen()).includes('117 shopping choices') && (await screen()).includes('raise my monthly limit to ₹15,000'));
   await pg.click('#screen [data-act=notnow]'); await wait(200);
   ok('Not now keeps the limit', (await pg.innerText('#toast')).includes('ask again later'));
 
   await pg.click('#screen [data-act=allow]'); await wait(3200);
   ok('Allow is intercepted: step 2 of 6, Trust Checkpoint paused it', (await cap()).includes('2 of 6') && (await screen()).includes('Paused') && (await pg.innerText('#toast')).includes('Trust Checkpoint paused this request'));
-  ok('Paused card says where it runs: bank or payment app, not the agent', (await screen()).includes('Runs through your bank or payment app, not your agent, so the agent cannot skip it.'));
+  ok('Paused card says where it runs: her bank, where the limit lives', (await screen()).includes("Your bank must check with Trust Checkpoint before raising your agent's limit, so the agent cannot skip it."));
   ok('After Allow the lens sweeps and rests on the sponsored tie', await pg.evaluate(() => { const c = document.querySelector('.x-tile.cur'); return !!c && /Deodorant/.test(c.dataset.item) && +document.getElementById('xray').dataset.lr > 0; }));
   ok('Coach: move the lens over her picks', (await pg.innerText('#coach')) === 'Move the lens over her picks');
   { const b1 = await pg.locator('.pk-face .p-tile').nth(1).boundingBox(); await pg.mouse.move(b1.x + 20, b1.y + 20); await pg.mouse.move(b1.x + b1.width / 2, b1.y + b1.height / 2, { steps: 3 }); await wait(400); }
@@ -73,24 +73,28 @@ async function run(name) {
   ok('See its record opens the checkpoint (3 of 6), coach steps aside', (await cap()).includes('3 of 6') && !(await pg.evaluate(() => document.getElementById('coach').classList.contains('on'))));
   c = await sheet();
   ok('Card title matches PDF', c.includes('Before you raise the limit to ₹15,000'));
-  ok('Badge: Default checker, rules public', c.includes('Default checker · rules public'));
-  ok('Independent checker label', c.includes('Independent checker · works with any agent'));
+  ok('Rules are public, last 3 months stated', c.includes('Rules are public') && c.includes('over the last 3 months'));
+  ok('Checker label: the one you chose, opened by your bank', c.includes('The independent checker you chose · opened by your bank'));
   ok('Groceries 47 of 55, Earned', /Groceries\s*Earned\s*47 of 55 ties went your way/.test(c));
   ok('Personal care 9 of 15, Check, sponsors won 6', /Personal care\s*Check\s*9 of 15 ties yours · sponsors won 6/.test(c));
   ok('Personal care dots: 15, 6 amber', (await pg.$$eval('#sheet .r.warn .dots i', n => n.length)) === 15 && (await pg.$$eval('#sheet .r.warn .dots i.d-tie', n => n.length)) === 6);
-  ok('Overpaid ₹18 a month', c.includes('Also overpaid ₹18 a month on non-ties'));
-  ok('Gold 3 of 3', c.includes('Bought at your price 3 of 3 times'));
-  ok('Electronics: no verdict', c.includes('Electronics: not handled yet, so no verdict'));
-  ok('Spot-check 8 of 10, Simulated', c.includes('Simulated') && c.includes('Spot-check: 8 of 10 sampled picks passed'));
+  ok('Avoidable spend ₹18 a month', c.includes('Also ₹18 a month avoidable spend on non-ties'));
+  ok('Household 8 of 11, Earned (no Gold row)', /Household\s*Earned\s*8 of 11 ties went your way/.test(c) && !c.includes('Gold'));
+  ok('Electronics: a new area starts with no verdict', c.includes('Electronics: not handed over yet. A new area starts with no verdict.'));
+  ok('Records: 117 of 117 match the fingerprints the bank holds (no spot-check score)', c.includes('117 of 117') && c.includes('records match the fingerprints your bank holds') && !c.includes('Spot-check'));
+  await pg.click('#sheet .how summary'); await wait(250);
+  c = await sheet();
+  ok('How verdicts are set: tie, usual brand, all four verdicts with thresholds from the data', c.includes('Tie: your usual brand and another option share the lowest cost, delivery included, with ratings within 0.1. It counts against the agent only if a sponsored option won.') && c.includes('Avoidable spend: paid above the cheapest option of that product rated as well or better.') && c.includes('Earned: at least 70% of ties went your way and under ₹50 a month avoidable spend.') && c.includes('Check: at least 40% and under ₹200.') && c.includes('Hold back: below that.') && c.includes('No verdict: fewer than 5 ties.'));
   ok('Three choices', c.includes('See why') && c.includes('Raise anyway') && c.includes('Not yet'));
   await shot('02-checkpoint');
 
   await pg.click('#sheet [data-act=notyet]'); await wait(200);
-  ok('Not yet keeps ₹10,000', (await pg.innerText('#toast')).includes('Limit stays ₹10,000'));
+  ok('Not yet keeps ₹10,000, closes the card and ends honestly', (await pg.innerText('#toast')).includes('Limit stays ₹10,000') && !(await pg.evaluate(() => document.getElementById('sheet').classList.contains('open'))) && (await cap()).includes('She said not yet.'));
+  await pg.click('#cap [data-act=step][data-i="2"]'); await wait(700);
   await pg.click('#sheet [data-act=checker]'); await wait(500);
   c = await sheet();
   ok('Second opinion labelled simulated', c.includes('Simulated') && c.includes('Outside checkers are planned, not live'));
-  ok('Disagreement explained', c.includes('Why they disagree on') && c.includes('the bar is') && c.includes('Stricter is not automatically right'));
+  ok('Disagreement explained: same records, different bar, she chooses', c.includes('Why they disagree on') && c.includes('only the bar differs') && c.includes('You choose which checker your bank uses') && !c.includes('stricter verdict'));
   ok('Second opinion keeps step 3', (await cap()).includes('3 of 6'));
   await shot('03-second-opinion');
   await pg.click('#sheet [data-act=record]'); await wait(400);
@@ -98,13 +102,14 @@ async function run(name) {
   await pg.click('#sheet [data-act=why]'); await wait(800);
   c = await sheet();
   ok('Why: same ₹249, Brand Y vs Brand Q', (c.match(/₹249/g) || []).length >= 2 && c.includes('Brand Y') && c.includes('Brand Q'));
-  ok('Why: Sponsored stamp and verdict', c.includes('Sponsored') && c.includes('Sponsorship decided this tie.'));
+  ok('Why: one tie can be chance, 6 of 15 is the pattern', c.includes('Sponsored') && c.includes('One tie can be chance.') && c.includes('Sponsors won 6 of 15 personal-care ties'));
   ok('Why: record fingerprint shown', c.includes('Record locked when chosen'));
   await shot('04-why');
 
   await pg.click('#sheet [data-act=rule]'); await wait(700);
   c = await sheet();
   ok('Rule preview: 6 personal care', c.includes('6 personal care'));
+  ok('Rule is a condition of the limit: broken means back to ₹10,000', c.includes('The rule covers every area and becomes a condition of your ₹15,000 limit.') && c.includes('If the agent breaks it even once') && c.includes('your bank drops the limit back to ₹10,000') && !c.includes('Ask me before'));
   await pg.click('#sheet label.tg >> nth=0'); await wait(300);
   ok('Rule off shows the consequence', (await sheet()).includes('Off: ties keep going wherever the agent decides.'));
   await pg.click('#sheet label.tg >> nth=0'); await wait(300);
@@ -115,7 +120,9 @@ async function run(name) {
   await wait(3600);
   c = await screen();
   ok('Month later: 4 of 4', c.includes('4 of 4') && (await cap()).includes('6 of 6'));
-  ok('Month later: 2 of 4 without the rule', c.includes('Without it: 2 of 4'));
+  ok('Month later: replay without the rule is labelled a simulation (2 of 4)', c.includes('Same month replayed without the rule (simulation): 2 of 4'));
+  ok('Month later: says the bank would have dropped the limit', c.includes('Had the agent broken it, your bank would have dropped the limit back to ₹10,000.'));
+  ok('Month later: old picks and lens are gone', !(await pg.$('#picks')));
   ok('Month later: Personal care now Earned, 11 of 15', c.includes('Earned') && c.includes('11 of 15 ties yours'));
   ok('Month later: honest about the bill', c.includes('changes whose brand wins, not the bill'));
   ok('Limit ₹15,000 with rule on', c.includes('₹15,000') && c.includes('Rule on'));
@@ -123,7 +130,8 @@ async function run(name) {
 
   await pg.click('#cap [data-act=about]'); await wait(500);
   let a = await pg.innerText('#about');
-  ok('How I built this: before/after read from the logic (9 of 15, then 4 of 4), even when opened at the end', a.includes('Here 9 of 15 in personal care before the rule, 4 of 4 the month after.'));
+  ok('How I built this: before/after read from the logic (9 of 15, then 4 of 4), even when opened at the end', a.includes('9 of 15 personal-care ties over the 3 months before the rule; 4 of 4 in the month after'));
+  ok('How I built this: How it works in 4 steps; no export, no 90 days', a.includes('How it works') && a.includes('the bank drops the limit back') && !/export|90 days/.test(a));
   ok('How I built this: thinking, independence, shipping', a.includes('How I shipped it') && a.includes('North star') && a.includes('Independent'));
   await pg.click('#about [data-act=tamper]'); await wait(300);
   ok('Tamper test caught (25 of 26)', (await pg.innerText('#tamperOut')).includes('Tamper caught: 25 of 26'));
@@ -154,7 +162,7 @@ async function run(name) {
   const ov = L.xt.find(t => t.item === L.overItem);
   ok('Overpaid pick: coral "₹' + L.overExtra + ' more than an equal option" from the logic', ov && /t-over/.test(ov.cls) && L.overExtra > 0 && ov.text.includes('₹' + L.overExtra + ' more than an equal option'));
   ok('Aligned pick: green "Your usual · best price"', L.xt.some(t => /t-ok/.test(t.cls) && t.text.includes('Your usual · best price')));
-  ok('Header: What Trust Checkpoint sees · ₹N = M.avoidable (₹28)', L.head.includes('What Trust Checkpoint sees') && L.head.includes('₹' + L.avoidable + ' a month overpaid') && L.avoidable === 28);
+  ok('Header: What Trust Checkpoint sees · ₹N = M.avoidable (₹28)', L.head.includes('What Trust Checkpoint sees') && L.head.includes('₹' + L.avoidable + ' a month avoidable spend, all areas') && L.avoidable === 28);
   ok('Header ₹N adds up the card numbers (Personal care ₹18 + Household ₹' + L.hh + ' + Groceries ₹' + L.gr + ')', L.pcA === 18 && L.pcA + L.hh + L.gr === L.avoidable);
   await shot('02b-lens');
   // drag: move the pointer over the overpaid pick, the lens follows and snaps to it
@@ -172,7 +180,7 @@ async function run(name) {
   // the other path: raise without a rule, honestly shows no gain
   await pg.click('#cap [data-act=step][data-i="2"]'); await wait(700);
   await pg.click('#sheet [data-act=raise-plain]'); await wait(5600);
-  ok('Raise anyway: 2 of 4, no rule set', (await screen()).includes('2 of 4') && (await screen()).includes('(no rule set)'));
+  ok('Raise anyway: 2 of 4, no rule set, nothing claims a rule', (await screen()).includes('2 of 4') && (await screen()).includes('(no rule set)') && !(await screen()).includes('Rule kept') && (await cap()).includes('No rule was set, so nothing changed.'));
 
   // autoplay: the whole story plays itself
   await pg.click('.top [data-act=play]'); const t0 = Date.now(); await wait(5600);
